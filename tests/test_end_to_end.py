@@ -4,6 +4,7 @@ import copy
 from contextlib import redirect_stderr, redirect_stdout
 import io
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -14,7 +15,13 @@ PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT / "src"))
 
 from ioitf.artifacts import validate_input_artifact, validate_result_artifact  # noqa: E402
-from ioitf.canonical import atomic_write, dump_bytes, read_canonical_json, write_jsonl  # noqa: E402
+from ioitf.canonical import (  # noqa: E402
+    atomic_write,
+    dump_bytes,
+    loads,
+    read_canonical_json,
+    write_jsonl,
+)
 from ioitf.cases import load_case_definitions  # noqa: E402
 from ioitf.cli import main  # noqa: E402
 from ioitf.compare import compare_result_records  # noqa: E402
@@ -28,9 +35,31 @@ from ioitf.report import RecordReport, write_failure_bundle, write_reports  # no
 class EndToEndTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.isa_path = PROJECT / "cases" / "isa-registry.json"
+        cls.isa_path = PROJECT / "contracts" / "isa-registry.json"
+        cls.suite_path = PROJECT / "examples" / "sse2"
         cls.isa = load_isa_registry(cls.isa_path)
-        cls.cases = load_case_definitions(PROJECT / "cases", isa_registry=cls.isa)
+        cls.cases = load_case_definitions(cls.suite_path, isa_registry=cls.isa)
+
+    def test_one_command_development_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "check"
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
+                exit_code = main(
+                    [
+                        "check",
+                        "--project", str(PROJECT / "ioitf.toml"),
+                        "--output", str(output),
+                        "--count-per-case", "2",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            result = loads(stdout.getvalue().strip())
+            assert isinstance(result, dict)
+            self.assertEqual(result["status"], "pass")
+            self.assertFalse(result["native_evidence"])
+            self.assertEqual(result["record_count"], 6)
+            self.assertTrue((output / "comparison" / "summary.json").is_file())
 
     def test_fixture_match_tamper_detection_and_failure_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -84,7 +113,7 @@ class EndToEndTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "compare-results",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--input", str(generated.manifest_path),
                         "--intel", str(intel_run.manifest_path),
@@ -103,7 +132,7 @@ class EndToEndTests(unittest.TestCase):
                 stale_exit = main(
                     [
                         "compare-results",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--input", str(generated.manifest_path),
                         "--intel", str(intel_run.manifest_path),
@@ -238,7 +267,7 @@ class EndToEndTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "compare-results",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--input", str(generated.manifest_path),
                         "--intel", str(intel_run.manifest_path),
@@ -284,7 +313,7 @@ class EndToEndTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "compare-results",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--input", str(generated.manifest_path),
                         "--intel", str(intel.manifest_path),
@@ -299,7 +328,7 @@ class EndToEndTests(unittest.TestCase):
                     [
                         "validate-artifact",
                         "--kind", "result",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--input", str(generated.manifest_path),
                         "--manifest", str(power.manifest_path),
@@ -316,7 +345,7 @@ class EndToEndTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "generate-vectors",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--output", str(output_file),
                         "--count-per-case", "1",
@@ -340,7 +369,7 @@ class EndToEndTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "generate-vectors",
-                        "--cases", str(PROJECT / "cases"),
+                        "--cases", str(self.suite_path),
                         "--isa-registry", str(self.isa_path),
                         "--output", str(Path(temporary) / "vectors"),
                         "--count-per-case", "1",
@@ -383,6 +412,9 @@ class EndToEndTests(unittest.TestCase):
             }
             case_path = root / "case.json"
             atomic_write(case_path, dump_bytes(data, newline=True))
+            source = self.cases.get(data["id"]).source_path
+            assert source is not None
+            shutil.copyfile(source.parent / "development.py", root / "development.py")
             registry = load_case_definitions(case_path, isa_registry=self.isa)
             generated = generate_artifact(
                 cases=registry,

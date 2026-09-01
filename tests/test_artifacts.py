@@ -31,8 +31,10 @@ from ioitf.isa import load_isa_registry  # noqa: E402
 class ArtifactValidationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.isa = load_isa_registry(PROJECT / "cases" / "isa-registry.json")
-        cls.cases = load_case_definitions(PROJECT / "cases", isa_registry=cls.isa)
+        cls.isa = load_isa_registry(PROJECT / "contracts" / "isa-registry.json")
+        cls.cases = load_case_definitions(
+            PROJECT / "examples" / "sse2", isa_registry=cls.isa
+        )
 
     def _input(self, root: Path):
         generated = generate_artifact(

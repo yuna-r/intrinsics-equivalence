@@ -1,142 +1,195 @@
 # intrinsics-equivalence
 
-<p align="center">
-  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-00b8d9?style=for-the-badge">
-  <img alt="IOITF Spec 1.1.0 draft" src="https://img.shields.io/badge/IOITF_SPEC-1.1.0--draft-8a2be2?style=for-the-badge">
-  <img alt="Status: early development" src="https://img.shields.io/badge/status-early_development-ff6f00?style=for-the-badge">
-</p>
+![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat&logo=python&logoColor=white)
+![C](https://img.shields.io/badge/C-native-a8b9cc?style=flat&logo=c&logoColor=black)
+![Status](https://img.shields.io/badge/status-early_development-f59e0b?style=flat)
+[![MIT License](https://img.shields.io/badge/license-MIT-2ea44f?style=flat)](LICENSE)
 
-<p align="center">
-  <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white">
-  <img alt="C" src="https://img.shields.io/badge/C-native_adapters-a8b9cc?style=flat-square&logo=c&logoColor=black">
-  <img alt="CMake" src="https://img.shields.io/badge/CMake-build-064f8c?style=flat-square&logo=cmake&logoColor=white">
-  <img alt="Intel SSE2" src="https://img.shields.io/badge/Intel-SSE2-0071c5?style=flat-square&logo=intel&logoColor=white">
-  <img alt="OpenPOWER VSX" src="https://img.shields.io/badge/OpenPOWER-VSX-e01f27?style=flat-square&logo=ibm&logoColor=white">
-  <img alt="Canonical JSON RFC 8785" src="https://img.shields.io/badge/JSON-RFC_8785-ffd600?style=flat-square&logo=json&logoColor=black">
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square"></a>
-</p>
+Intel IntrinsicsとOpenPOWER側の互換実装へ同じ入力を渡し、結果の違いを見つけるための
+テストツールです。成果物は厳密に扱いつつ、普段の確認は短いコマンドで済むようにしています。
 
-`IOITF-SPEC-001`（1.1.0-draft）を実装するための初期版です。現段階では、CPUに依存しないコーディネーター部分を先に完成させています。
+現在のexample suiteは`_mm_add_pd`、`_mm_set1_pd`、`_mm_shuffle_epi32`を収録しています。
 
-- Original concept: [@daisukeokaoss](https://github.com/daisukeokaoss)
+> **Status:** まだ開発初期です。ローカルの比較フローとportable adapterは動きますが、
+> x86_64 / ppc64le実機runnerは未完成です。
 
-実装済み:
+Original concept: [@daisukeokaoss](https://github.com/daisukeokaoss)
 
-- RFC 8785で必要になるUTF-16 code-unit順を含む、整数限定のcanonical JSON
-- JSON安全整数、重複キー、非canonical JSON/JSONLの拒否
-- 閉じたcase schema、ISA registry、used ISA contractの検証とSHA-256
-- 決定的な入力生成、`input_id`、入力manifest
-- 丸めwitnessの回帰ID昇格、同一入力のnearest-even対、およびIntel oracle検査
-- 結果manifestとpreflight projectionの検証
-- `bit_exact`、`ieee_value`、`ulp`、`abs_rel`、`classification`比較
-- status、戻り値、バッファ、メモリ契約、FP例外の原子単位比較
-- summary、JUnit、単一入力failure bundle、その厳格検証と`verify-replay`
-- C ABI v1ヘッダーと、ホストでビルドできるnative自己テスト
+## Quick start
 
-登録済みの最初のケースは `_mm_add_pd`、`_mm_set1_pd`、`_mm_shuffle_epi32`
-です。3ケースともIntel、OpenPOWER、開発用portableの公開Cシンボルを持ちます。
-
-制限:
-
-- Linux x86_64/ppc64leの実機runner、CPU feature detector、MXCSR/FPSCR/VSCR probe、共有ライブラリの動的ロード監査は未完成です。
-- ppc64le adapterはソース実装までで、対応toolchainと実機によるビルド・実行確認は未実施です。
-- 実機SUTを単一入力で再実行するnative `ioitf replay`は未実装です。生成済みの再実行成果物を照合する`ioitf verify-replay`は実装済みです。
-- traceability/coverage成果物は未実装です。
-- case definitionは現在JSONのみで、YAML frontendは未実装です。JSONはYAML 1.2 JSON schemaの部分集合なので、仕様上有効な形式です。
-- `observe_fp_exceptions: true`でIntrinsicごとに発生可能な例外classを網羅したかは、
-  schema v1に能力宣言がないためケース作者の一次資料レビューも必要です。登録された
-  regressionの型、入力ID、Intel期待値は機械検証します。現行3ケースはすべて例外観測を無効にしています。
-
-## クイックスタート
-
-Python 3.11以上が必要です。このmacOS環境では`/usr/bin/python3`が3.9系のため、
-HomebrewのPython 3.14で仮想環境を作ります。
+Python 3.11以上を使います。
 
 ```sh
+git clone https://github.com/yuna-r/intrinsics-equivalence.git
 cd intrinsics-equivalence
-/opt/homebrew/bin/python3.14 -m venv .venv
+
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 
+ioitf check
+```
+
+成功すると、次のような結果が返ります。
+
+```json
+{"artifacts":".ioitf/checks/...","case_count":3,"development_fixture":true,"native_evidence":false,"record_count":24,"status":"pass"}
+```
+
+`ioitf check`は、case定義の検証、入力生成、Intel/OpenPOWER用development fixtureの実行、
+結果比較までをまとめて行います。成果物は`.ioitf/checks/<timestamp>/`に残ります。
+
+ここで使うfixtureはローカル確認用です。`native_evidence: false`が示すとおり、
+Intel/POWER実機で動作した証拠にはなりません。
+
+macOSの`/usr/bin/python3`が古い場合は、Homebrewなどで入れたPython 3.11以上を
+仮想環境の作成に使ってください。
+
+## 仕組み
+
+```text
+case pack ──> test vectors ──┬──> Intel result
+                             └──> OpenPOWER result
+                                      │
+                                      ▼
+                                   compare
+                                      │
+                         summary / JUnit / failure bundle
+```
+
+frameworkとテストsuiteは分けてあります。
+
+```text
+intrinsics-equivalence/
+├── src/ioitf/             # CLIとartifact処理
+├── adapters/              # native / portable adapter
+├── contracts/             # ISA registry
+├── examples/sse2/         # example suite
+├── tests/                 # framework自身のテスト
+└── ioitf.toml             # 使用するsuiteの指定
+```
+
+## テストケースを追加する
+
+似ている既存ケースをコピーするのが一番早いです。
+
+```sh
+cp -R examples/sse2/add-f64x2 examples/sse2/my-new-case
+```
+
+1ケースは1つのcase packとしてまとまっています。
+
+```text
+examples/sse2/my-new-case/
+├── case.yaml
+└── development.py
+```
+
+### 1. `case.yaml`を書く
+
+ここにはcase ID、引数、戻り値、必要ISA、比較方法を書きます。
+
+```yaml
+schema_version: 1
+id: sse2.add.f64x2.default
+description: two-lane IEEE 754 binary64 addition
+
+intel:
+  symbol: intel_mm_add_pd
+  required_isa: [sse2]
+
+openpower:
+  symbol: power_mm_add_pd
+  required_isa: [power8, vsx]
+
+signature:
+  arguments:
+    - {name: a, type: vector, element: f64, lanes: 2}
+    - {name: b, type: vector, element: f64, lanes: 2}
+  return: {type: vector, element: f64, lanes: 2}
+
+input_domain: {exclude: []}
+comparison: {mode: bit_exact}
+environment:
+  fp_rounding_modes: [nearest_even]
+  observe_fp_exceptions: false
+tags: []
+```
+
+YAMLとJSONの両方を読めます。YAMLではanchor、alias、merge key、明示tag、重複key、
+浮動小数点numberを受け付けません。
+
+### 2. `development.py`へ入力と期待動作を書く
+
+`candidates()`と`execute()`を同じファイルへ置きます。
+
+```python
+CASE_ID = "sse2.add.f64x2.default"
+MINIMUM_COUNTS = {"standard": 10}
+
+def candidates(case, *, seed_text):
+    # 境界値や典型値を先にyieldし、その後に決定的なrandom入力を続ける
+    yield {
+        "environment": {"fp_mode": "ieee", "rounding": "nearest_even"},
+        "generation": {"class": "structured"},
+        "operands": {...},
+    }
+
+def execute(record):
+    # development fixtureが使う、CPUに依存しない期待動作
+    return {"return": {...}}
+```
+
+`ioitf`が`case.yaml`の隣にあるファイルを自動で見つけます。中央のgeneratorやfixtureへ
+case IDの分岐を追加する必要はありません。実例は
+[`examples/sse2/README.md`](examples/sse2/README.md)と各case packを参照してください。
+
+### 3. 確認する
+
+```sh
+ioitf check
+```
+
+特定のproject fileを使う場合:
+
+```sh
+ioitf check --project ../my-intrinsics/ioitf.toml
+```
+
+project file内の相対パスは、その`ioitf.toml`がある場所を基準に解決されます。
+
+### 4. Native対応を加える場合
+
+development checkだけならcase packの2ファイルで動きます。実機で検証するケースへ進める場合は、
+次も追加します。
+
+- `adapters/intel/`: Intel Intrinsicを呼ぶ実装
+- `adapters/openpower/`: OpenPOWER互換実装を呼ぶ実装
+- `adapters/portable/`: ホストで確認できる補助実装
+- `include/framework/example_cases.h`: 公開C symbol
+- `tests/native/test_native.c`: ABIと代表入力のテスト
+
+IntelとOpenPOWERのコードは、それぞれの対象CPU上で別々にビルド・実行します。
+
+## Framework側のテストを追加する
+
+変更した場所に近いファイルへ追加します。
+
+- case schema、YAML、入力生成: `tests/test_cases_generator.py`
+- project fileの読み込み: `tests/test_project.py`
+- manifestとartifact検証: `tests/test_artifacts.py`
+- 比較ルール: `tests/test_compare.py`
+- CLIと一連の処理: `tests/test_end_to_end.py`
+- failure bundleと再実行: `tests/test_replay.py`
+- C ABIとadapter: `tests/native/test_native.c`
+
+Python側は標準の`unittest`です。
+
+```sh
 python -m unittest discover -s tests -v
-
-python -m ioitf validate-cases \
-  --cases cases \
-  --isa-registry cases/isa-registry.json
-
-python -m ioitf generate-vectors \
-  --cases cases \
-  --isa-registry cases/isa-registry.json \
-  --output artifacts/vectors \
-  --count-per-case 8
 ```
 
-開発fixtureを使ったend-to-end確認:
-
-```sh
-python -m ioitf fixture-run \
-  --cases cases --isa-registry cases/isa-registry.json \
-  --input artifacts/vectors/test-vectors.manifest.json \
-  --role intel --output artifacts/intel \
-  --i-understand-this-is-not-native-evidence
-
-python -m ioitf fixture-run \
-  --cases cases --isa-registry cases/isa-registry.json \
-  --input artifacts/vectors/test-vectors.manifest.json \
-  --role openpower --output artifacts/openpower \
-  --i-understand-this-is-not-native-evidence
-
-python -m ioitf compare-results \
-  --cases cases --isa-registry cases/isa-registry.json \
-  --input artifacts/vectors/test-vectors.manifest.json \
-  --intel artifacts/intel/intel-results.manifest.json \
-  --openpower artifacts/openpower/power-results.manifest.json \
-  --output artifacts/comparison \
-  --allow-development-fixtures
-```
-
-別のOSでは、利用可能な3.11以上のPythonで同じ仮想環境を作ってください。
-インストールせずに実行する場合は各コマンドへ`PYTHONPATH=src`を付けます。
-
-## Failure bundleと`verify-replay`
-
-通常の不一致ごとに、`compare-results`は`<output>/failures/<input_id>/`へ単一入力の
-failure bundleを出力します。`verify-replay`は、両ホストで生成済みの再実行結果を
-bundle内の基準結果と不一致情報へ照合します。
-
-```sh
-python -m ioitf verify-replay \
-  --failure artifacts/comparison/failures/$INPUT_ID/failure.json \
-  --intel replay/intel/intel-results.manifest.json \
-  --openpower replay/openpower/power-results.manifest.json
-```
-
-`--failure`には`failure.json`またはその親bundleディレクトリを指定できます。
-`--intel`と`--openpower`の相対パスは現在の作業ディレクトリではなく、
-`failure.json`があるbundleディレクトリを基準に解決します。絶対パスも指定できます。
-
-検証時には、canonical JSON/JSONL、閉じたschema、schema/ABI version、固定bundle構成、
-bundle内規範ファイルのSHA-256と相互参照、単一case・入力・両roleの基準結果、
-`input_id`、case contract、used ISA contractを検査します。規範ファイルへのpathにある
-symlinkやbundle外へ出るpathも拒否し、保存済みの不一致件数と最初の差分を基準結果から再計算します。
-
-結果statusと終了コード:
-
-- `reproduced` / `0`: 両roleの結果と保存済み不一致が再現した
-- `not_reproduced` / `1`: 規範結果または不一致内容が変わった
-- `invalid_bundle` / `2`: failure bundle自体の検証に失敗した
-- `unsupported` / `3`: 開発fixtureを明示許可していない
-- `runner_error` / `4`: 再実行結果artifactの検証に失敗した
-
-CPU、compiler、build IDなどの環境差は`environment_differences`へ診断として出力され、
-それだけでは再現失敗になりません。
-
-`fixture-run`は比較器を自己テストするための純粋Python実装であり、Intel/POWER実機の
-証拠ではありません。基準または再実行結果に`development-fixture:` build IDが1件でも
-含まれる場合、`verify-replay`は既定で拒否します。開発テストに限り
-`--allow-development-fixtures`を追加してください。この許可を付けてもnative evidenceにはなりません。
-
-## Native自己テスト
+Native側:
 
 ```sh
 cmake -S . -B build/native -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
@@ -144,19 +197,108 @@ cmake --build build/native --parallel
 ctest --test-dir build/native --output-on-failure
 ```
 
-arm64 macOSではportable adapterだけをビルドします。x86_64ではSSE2 adapter、
-ppc64leではVSX adapterも対象になります。portable adapterの成功は、実機間の
-Intrinsic等価性を証明しません。詳細は[NATIVE_STATUS.md](NATIVE_STATUS.md)を参照してください。
+ケースを追加したときは、最低でも次の3種類が通ることを確認します。
+
+```sh
+ioitf check
+python -m unittest discover -s tests -v
+cmake --build build/native --parallel
+ctest --test-dir build/native --output-on-failure
+```
+
+arm64 macOSではportable adapterのみ、Linux x86_64ではIntel adapter、ppc64leでは
+OpenPOWER adapterも対象になります。詳しくは[NATIVE_STATUS.md](NATIVE_STATUS.md)を参照してください。
+
+<details>
+<summary>個別コマンドとfailure bundle</summary>
+
+### 個別コマンド
+
+工程を分けて確認したい場合も、同じ`ioitf.toml`が使われます。
+
+```sh
+ioitf validate-cases
+
+ioitf generate-vectors \
+  --output artifacts/vectors \
+  --count-per-case 8
+```
+
+生成したvectorをdevelopment fixtureへ渡す例:
+
+```sh
+ioitf fixture-run \
+  --input artifacts/vectors/test-vectors.manifest.json \
+  --role intel --output artifacts/intel \
+  --i-understand-this-is-not-native-evidence
+
+ioitf fixture-run \
+  --input artifacts/vectors/test-vectors.manifest.json \
+  --role openpower --output artifacts/openpower \
+  --i-understand-this-is-not-native-evidence
+
+ioitf compare-results \
+  --input artifacts/vectors/test-vectors.manifest.json \
+  --intel artifacts/intel/intel-results.manifest.json \
+  --openpower artifacts/openpower/power-results.manifest.json \
+  --output artifacts/comparison \
+  --allow-development-fixtures
+```
+
+インストールせずに試す場合は`PYTHONPATH=src python -m ioitf`を使えます。
+
+### 不一致を再確認する
+
+不一致が見つかると、`<output>/failures/<input_id>/`へその入力だけのfailure bundleを
+保存します。別ホストで取り直した結果は`verify-replay`で照合できます。
+
+```sh
+ioitf verify-replay \
+  --failure artifacts/comparison/failures/$INPUT_ID/failure.json \
+  --intel replay/intel/intel-results.manifest.json \
+  --openpower replay/openpower/power-results.manifest.json
+```
+
+`--failure`には`failure.json`またはbundleディレクトリを指定できます。相対パスは
+bundleディレクトリを基準に解決されます。
+
+#### Failure bundleで検証するもの
+
+- canonical JSON / JSONLと閉じたschema
+- bundle内ファイルのSHA-256と相互参照
+- case contract、input ID、used ISA contract
+- Intel / OpenPOWER両方の基準結果
+- 保存された不一致件数と最初の差分
+- bundle外へ出るpathやsymlinkの拒否
+
+development fixtureの成果物を使う場合は`--allow-development-fixtures`が必要です。
+この指定を付けてもnative evidenceにはなりません。
+
+</details>
+
+## 現在の制限
+
+- Linux x86_64 / ppc64le実機runnerとCPU feature detectorは未完成です。
+- MXCSR、FPSCR、VSCR probeと共有ライブラリの動的ロード監査は未完成です。
+- ppc64le adapterは対応toolchainと実機での確認が残っています。
+- 実機SUTを単一入力で動かすnative `ioitf replay`は未実装です。
+- traceability / coverage artifactは未実装です。
+- 現在の3ケースはFP例外観測を無効にしています。
 
 ## 終了コード
 
-- `0`: 全比較一致、または検証/生成成功
-- `1`: 比較可能な結果の不一致
-- `2`: 仕様、入力、case定義のエラー
-- `3`: 必須ISA・能力がunsupported
-- `4`: runner成果物または実行の異常
+- `0`: 一致、または検証・生成成功
+- `1`: 比較結果の不一致
+- `2`: case定義や入力のエラー
+- `3`: 必要なISAや機能が利用できない
+- `4`: runnerまたは成果物の異常
 - `5`: Intel回帰oracleエラー
 
-## 設計上の境界
+## 仕様と設計メモ
 
-`ioitf` Python packageは、入力と成果物をホスト間で交換する規範層です。`include/framework/case_abi.h`とnative codeは各ホスト内でrunnerとadapterを結ぶ層です。ネイティブvector型や構造体の生バイト列をホスト間形式に使用しません。
+- [IOITF specification](docs/doc/intel-openpower-intrinsics-equivalence-test-framework-spec.md)
+- [読みやすい解説版](docs/doc/intel-openpower-intrinsics-equivalence-test-framework-spec-for-everyone.md)
+- [Native implementation status](NATIVE_STATUS.md)
+
+ホスト間ではcanonical JSON / JSONLだけを交換します。`__m128i`やOpenPOWERのvector型など、
+CPU固有型の生バイト列は共通形式に使いません。

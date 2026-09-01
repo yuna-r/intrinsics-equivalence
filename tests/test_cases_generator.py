@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 import copy
+import shutil
 import tempfile
 import unittest
 
@@ -27,8 +28,10 @@ from ioitf.records import derive_input_id  # noqa: E402
 class CaseAndGeneratorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.isa = load_isa_registry(PROJECT / "cases" / "isa-registry.json")
-        cls.cases = load_case_definitions(PROJECT / "cases", isa_registry=cls.isa)
+        cls.isa = load_isa_registry(PROJECT / "contracts" / "isa-registry.json")
+        cls.cases = load_case_definitions(
+            PROJECT / "examples" / "sse2", isa_registry=cls.isa
+        )
 
     def test_registry_and_used_projection(self) -> None:
         self.assertEqual(
@@ -44,6 +47,53 @@ class CaseAndGeneratorTests(unittest.TestCase):
             [token["token"] for token in used.data["tokens"]],
             ["power8", "sse2", "vsx"],
         )
+
+    def test_case_contracts_are_yaml_case_packs(self) -> None:
+        for case in self.cases:
+            self.assertIsNotNone(case.source_path)
+            assert case.source_path is not None
+            self.assertEqual(case.source_path.name, "case.yaml")
+            self.assertTrue((case.source_path.parent / "development.py").is_file())
+
+    def test_yaml_rejects_duplicate_keys_aliases_and_non_json_scalars(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            duplicate = root / "duplicate.yaml"
+            duplicate.write_text(
+                "schema_version: 1\nid: one\nid: two\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValidationError, "duplicate mapping key"):
+                load_case_definitions(duplicate, isa_registry=self.isa)
+
+            alias = root / "alias.yaml"
+            alias.write_text(
+                "schema_version: 1\ntags: &shared []\ncopy: *shared\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValidationError, "anchors and aliases"):
+                load_case_definitions(alias, isa_registry=self.isa)
+
+            original = self.cases.get("sse2.set1.f64x2.default").source_path
+            assert original is not None
+            non_json_bool = root / "non-json-bool.yaml"
+            non_json_bool.write_text(
+                original.read_text(encoding="utf-8").replace(
+                    "observe_fp_exceptions: false", "observe_fp_exceptions: yes"
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValidationError, "expected a boolean"):
+                load_case_definitions(non_json_bool, isa_registry=self.isa)
+
+            float_number = root / "float.yaml"
+            float_number.write_text(
+                original.read_text(encoding="utf-8").replace(
+                    "schema_version: 1", "schema_version: 1.0"
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValidationError, "floating-point"):
+                load_case_definitions(float_number, isa_registry=self.isa)
 
     def test_generation_is_reproducible_and_manifest_is_last_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -181,6 +231,9 @@ class CaseAndGeneratorTests(unittest.TestCase):
             root = Path(temporary)
             case_path = root / "case.json"
             atomic_write(case_path, dump_bytes(data, newline=True))
+            source = self.cases.get(data["id"]).source_path
+            assert source is not None
+            shutil.copyfile(source.parent / "development.py", root / "development.py")
             registry = load_case_definitions(case_path, isa_registry=self.isa)
             generated = generate_artifact(
                 cases=registry,
@@ -244,6 +297,9 @@ class CaseAndGeneratorTests(unittest.TestCase):
             root = Path(temporary)
             case_path = root / "case.json"
             atomic_write(case_path, dump_bytes(data, newline=True))
+            source = self.cases.get(data["id"]).source_path
+            assert source is not None
+            shutil.copyfile(source.parent / "development.py", root / "development.py")
             registry = load_case_definitions(case_path, isa_registry=self.isa)
             with self.assertRaisesRegex(ValidationError, "mandatory regressions"):
                 generate_artifact(

@@ -1,0 +1,4 @@
+[ioitf]
+schema_version = 1
+suite = "examples/sse2"
+isa_registry = "contracts/isa-registry.json"

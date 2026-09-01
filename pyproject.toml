@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [{name = "IOITF contributors"}]
-dependencies = []
+dependencies = ["PyYAML>=6.0.3,<7"]
 
 [project.scripts]
 ioitf = "ioitf.cli:main"

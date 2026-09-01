@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import platform
-import struct
 from typing import Protocol
 
 from .canonical import (
@@ -24,7 +23,8 @@ from .canonical import (
     write_jsonl,
 )
 from .cases import CaseRegistry
-from .errors import UnsupportedError, ValidationError
+from .development import load_development_case
+from .errors import ValidationError
 from .isa import ISARegistry, project_used_isa
 from .records import validate_result_record
 
@@ -43,52 +43,6 @@ class FixtureRunResult:
     sha256: str
 
 
-def _f64_from_bits(bits: str) -> float:
-    return struct.unpack(">d", int(bits, 16).to_bytes(8, "big"))[0]
-
-
-def _f64_bits(value: float) -> str:
-    integer = int.from_bytes(struct.pack(">d", value), "big")
-    return f"0x{integer:016x}"
-
-
-def _execute(record: dict[str, JSONValue]) -> dict[str, JSONValue]:
-    case_id = str(record["case_id"])
-    operands = record["operands"]
-    assert isinstance(operands, dict)
-
-    if case_id == "sse2.add.f64x2.default":
-        left = operands["a"]
-        right = operands["b"]
-        assert isinstance(left, dict) and isinstance(right, dict)
-        left_lanes = left["lanes"]
-        right_lanes = right["lanes"]
-        assert isinstance(left_lanes, list) and isinstance(right_lanes, list)
-        lanes = [
-            _f64_bits(_f64_from_bits(str(a)) + _f64_from_bits(str(b)))
-            for a, b in zip(left_lanes, right_lanes, strict=True)
-        ]
-        return {"return": {"element": "f64", "lanes": lanes}}
-
-    if case_id == "sse2.set1.f64x2.default":
-        value = operands["value"]
-        assert isinstance(value, dict)
-        bits = str(value["bits"])
-        return {"return": {"element": "f64", "lanes": [bits, bits]}}
-
-    if case_id == "sse2.shuffle.i32x4.imm8":
-        source = operands["a"]
-        immediates = record["immediates"]
-        assert isinstance(source, dict) and isinstance(immediates, dict)
-        source_lanes = source["lanes"]
-        assert isinstance(source_lanes, list)
-        control = int(immediates["imm8"])
-        lanes = [str(source_lanes[(control >> (2 * lane)) & 3]) for lane in range(4)]
-        return {"return": {"element": "i32", "lanes": lanes}}
-
-    raise UnsupportedError(f"development fixture has no implementation for {case_id!r}")
-
-
 def _result_records(
     input_artifact: InputArtifactLike,
     *,
@@ -102,7 +56,7 @@ def _result_records(
             "case_id": case.id,
             "duration_ns": 0,
             "input_id": input_record["input_id"],
-            "observed": _execute(input_record),
+            "observed": load_development_case(case).execute(input_record),
             "runner": role,
             "schema_version": 1,
             "status": "ok",

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
 import copy
+from datetime import datetime, timezone
+import io
 from pathlib import Path
 import sys
 from typing import Sequence
@@ -24,12 +27,24 @@ from .errors import (
 )
 from .generator import DEFAULT_SEED, generate_artifact
 from .isa import ISARegistry, load_isa_registry
+from .project import load_project
 from .records import derive_input_id
 
 
+def _contract_paths(args: argparse.Namespace) -> tuple[Path, Path]:
+    cases_path = args.cases
+    isa_path = args.isa_registry
+    if cases_path is None or isa_path is None:
+        project = load_project(args.project)
+        cases_path = project.suite if cases_path is None else cases_path
+        isa_path = project.isa_registry if isa_path is None else isa_path
+    return cases_path, isa_path
+
+
 def _contracts(args: argparse.Namespace) -> tuple[CaseRegistry, ISARegistry]:
-    isa = load_isa_registry(args.isa_registry)
-    cases = load_case_definitions(args.cases, isa_registry=isa)
+    cases_path, isa_path = _contract_paths(args)
+    isa = load_isa_registry(isa_path)
+    cases = load_case_definitions(cases_path, isa_registry=isa)
     return cases, isa
 
 
@@ -38,7 +53,9 @@ def _print(value: JSONValue) -> None:
 
 
 def _validate_cases(args: argparse.Namespace) -> int:
-    cases, isa = _contracts(args)
+    cases_path, isa_path = _contract_paths(args)
+    isa = load_isa_registry(isa_path)
+    cases = load_case_definitions(cases_path, isa_registry=isa)
     _print(
         {
             "case_count": len(cases),
@@ -52,7 +69,9 @@ def _validate_cases(args: argparse.Namespace) -> int:
 
 
 def _generate_vectors(args: argparse.Namespace) -> int:
-    cases, isa = _contracts(args)
+    cases_path, isa_path = _contract_paths(args)
+    isa = load_isa_registry(isa_path)
+    cases = load_case_definitions(cases_path, isa_registry=isa)
     result = generate_artifact(
         cases=cases,
         isa_registry=isa,
@@ -419,9 +438,92 @@ def _verify_replay(args: argparse.Namespace) -> int:
     return EXIT_MATCH if verification.reproduced else EXIT_MISMATCH
 
 
+def _development_check(args: argparse.Namespace) -> int:
+    """Run the complete non-native authoring loop with one command."""
+
+    from .artifacts import validate_input_artifact, validate_result_artifact
+    from .fixture import run_fixture
+
+    cases_path, isa_path = _contract_paths(args)
+    isa = load_isa_registry(isa_path)
+    cases = load_case_definitions(cases_path, isa_registry=isa)
+    if args.output is None:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        output = Path(".ioitf") / "checks" / stamp
+    else:
+        output = args.output
+    if output.exists():
+        raise ValidationError(f"check output already exists; choose a fresh path: {output}")
+
+    generated = generate_artifact(
+        cases=cases,
+        isa_registry=isa,
+        output=output / "vectors",
+        profile=args.profile,
+        count_per_case=args.count_per_case,
+        seed=args.seed,
+    )
+    inputs = validate_input_artifact(generated.manifest_path, cases, isa)
+    intel = run_fixture(
+        input_artifact=inputs,
+        cases=cases,
+        isa_registry=isa,
+        role="intel",
+        output=output / "intel",
+    )
+    openpower = run_fixture(
+        input_artifact=inputs,
+        cases=cases,
+        isa_registry=isa,
+        role="openpower",
+        output=output / "openpower",
+    )
+    validate_result_artifact(
+        intel.manifest_path, cases, isa, input_artifact=inputs
+    )
+    validate_result_artifact(
+        openpower.manifest_path, cases, isa, input_artifact=inputs
+    )
+
+    comparison = output / "comparison"
+    compare_args = argparse.Namespace(
+        allow_development_fixtures=True,
+        cases=cases_path,
+        input=generated.manifest_path,
+        intel=intel.manifest_path,
+        isa_registry=isa_path,
+        openpower=openpower.manifest_path,
+        output=comparison,
+    )
+    with redirect_stdout(io.StringIO()):
+        exit_code = _compare_results(compare_args)
+
+    from .canonical import read_canonical_json
+
+    summary = read_canonical_json(comparison / "summary.json")
+    assert isinstance(summary, dict)
+    _print(
+        {
+            "artifacts": str(output),
+            "case_count": len(cases),
+            "development_fixture": True,
+            "native_evidence": False,
+            "record_count": generated.record_count,
+            "status": summary["outcome"],
+        }
+    )
+    return exit_code
+
+
 def _add_contract_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--cases", required=True, type=Path)
-    parser.add_argument("--isa-registry", required=True, type=Path)
+    parser.add_argument(
+        "--project",
+        default=Path("ioitf.toml"),
+        type=Path,
+        help="project file used when suite paths are not explicitly supplied",
+    )
+    parser.add_argument("--cases", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--isa-registry", type=Path, help=argparse.SUPPRESS)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -430,6 +532,21 @@ def _parser() -> argparse.ArgumentParser:
         description="Intel Intrinsics / OpenPOWER equivalence-test coordinator",
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
+
+    check = subcommands.add_parser(
+        "check",
+        help="run the complete development-only authoring loop",
+    )
+    _add_contract_arguments(check)
+    check.add_argument("--output", type=Path)
+    check.add_argument(
+        "--profile",
+        choices=("smoke", "standard", "exhaustive-small", "stress"),
+        default="smoke",
+    )
+    check.add_argument("--count-per-case", type=int, default=8)
+    check.add_argument("--seed", default=DEFAULT_SEED)
+    check.set_defaults(handler=_development_check)
 
     validate_cases = subcommands.add_parser("validate-cases")
     _add_contract_arguments(validate_cases)

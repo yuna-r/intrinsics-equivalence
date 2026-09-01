@@ -71,6 +71,7 @@ ENDIAN_SENSITIVE_OPERATIONS = {
 class CaseDefinition:
     id: str
     data: dict[str, JSONValue]
+    source_path: Path | None = None
 
     @property
     def signature(self) -> dict[str, JSONValue]:
@@ -468,6 +469,7 @@ def validate_case_definition(
     value: JSONValue,
     *,
     source: str = "case",
+    source_path: Path | None = None,
     isa_registry: ISARegistry | None = None,
 ) -> CaseDefinition:
     case = require_object(value, source)
@@ -580,42 +582,56 @@ def validate_case_definition(
             pointer_arguments=pointer_arguments,
             observe_fp_exceptions=bool(environment["observe_fp_exceptions"]),
         )
-    return CaseDefinition(case_id, case)
+    return CaseDefinition(case_id, case, source_path)
 
 
-def _case_values(path: Path) -> Iterator[tuple[JSONValue, str]]:
+def _case_values(path: Path) -> Iterator[tuple[JSONValue, str, Path]]:
     if path.is_dir():
         files = sorted(
             (
                 item
-                for item in path.rglob("*.json")
-                if item.is_file() and item.name != "isa-registry.json"
+                for item in path.rglob("*")
+                if item.is_file()
+                and item.suffix.lower() in {".json", ".yaml", ".yml"}
+                and item.name != "isa-registry.json"
             ),
             key=lambda item: utf16_sort_key(item.as_posix()),
         )
         if not files:
-            raise ValidationError(f"{path}: no JSON case definitions found")
+            raise ValidationError(f"{path}: no JSON or YAML case definitions found")
         for file_path in files:
             yield from _case_values(file_path)
         return
     if not path.is_file():
         raise ValidationError(f"case definition path does not exist: {path}")
-    value = load_file(path)
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        from .yamlio import load_yaml_file
+
+        value = load_yaml_file(path)
+    elif path.suffix.lower() == ".json":
+        value = load_file(path)
+    else:
+        raise ValidationError(f"unsupported case definition extension: {path}")
     if isinstance(value, list):
         if not value:
             raise ValidationError(f"{path}: case definition array is empty")
         for index, item in enumerate(value):
-            yield item, f"{path}[{index}]"
+            yield item, f"{path}[{index}]", path
     else:
-        yield value, str(path)
+        yield value, str(path), path
 
 
 def load_case_definitions(
     path: str | Path, *, isa_registry: ISARegistry | None = None
 ) -> CaseRegistry:
     cases: dict[str, CaseDefinition] = {}
-    for value, source in _case_values(Path(path)):
-        case = validate_case_definition(value, source=source, isa_registry=isa_registry)
+    for value, source, source_path in _case_values(Path(path)):
+        case = validate_case_definition(
+            value,
+            source=source,
+            source_path=source_path,
+            isa_registry=isa_registry,
+        )
         if case.id in cases:
             raise ValidationError(f"duplicate case definition ID: {case.id}")
         cases[case.id] = case
@@ -636,6 +652,7 @@ def resolve_case_registry(
         snapshot = validate_case_definition(
             copy.deepcopy(original.data),
             source=f"case registry snapshot {original.id}",
+            source_path=original.source_path,
             isa_registry=isa_registry,
         )
         snapshots[snapshot.id] = snapshot

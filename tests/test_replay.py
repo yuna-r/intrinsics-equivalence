@@ -38,9 +38,11 @@ RecordMutation = Callable[[list[dict[str, JSONValue]]], None]
 class ReplayVerificationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.isa_path = PROJECT / "cases" / "isa-registry.json"
+        cls.isa_path = PROJECT / "contracts" / "isa-registry.json"
         cls.isa = load_isa_registry(cls.isa_path)
-        cls.cases = load_case_definitions(PROJECT / "cases", isa_registry=cls.isa)
+        cls.cases = load_case_definitions(
+            PROJECT / "examples" / "sse2", isa_registry=cls.isa
+        )
 
     def _rewrite_result(self, manifest_path: Path, mutation: RecordMutation) -> None:
         manifest = read_canonical_json(manifest_path)
