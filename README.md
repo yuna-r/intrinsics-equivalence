@@ -30,7 +30,7 @@
 - 結果manifestとpreflight projectionの検証
 - `bit_exact`、`ieee_value`、`ulp`、`abs_rel`、`classification`比較
 - status、戻り値、バッファ、メモリ契約、FP例外の原子単位比較
-- summary、JUnit、単一入力failure bundle
+- summary、JUnit、単一入力failure bundle、その厳格検証と`verify-replay`
 - C ABI v1ヘッダーと、ホストでビルドできるnative自己テスト
 
 登録済みの最初のケースは `_mm_add_pd`、`_mm_set1_pd`、`_mm_shuffle_epi32`
@@ -38,11 +38,11 @@
 
 制限:
 
-- case definitionは現在JSONのみです。JSONはYAML 1.2 JSON schemaの部分集合なので、仕様上有効な形式です。
 - Linux x86_64/ppc64leの実機runner、CPU feature detector、MXCSR/FPSCR/VSCR probe、共有ライブラリの動的ロード監査は未完成です。
 - ppc64le adapterはソース実装までで、対応toolchainと実機によるビルド・実行確認は未実施です。
-- `fixture-run`は比較器を自己テストするための純粋Python実装です。IntelまたはPOWERの実機証拠ではありません。出力は`development-fixture:` build IDを持ち、比較時にも明示的な許可が必要です。
-- `replay` / `verify-replay`、traceability/coverage成果物、YAML frontendは次段階です。
+- 実機SUTを単一入力で再実行するnative `ioitf replay`は未実装です。生成済みの再実行成果物を照合する`ioitf verify-replay`は実装済みです。
+- traceability/coverage成果物は未実装です。
+- case definitionは現在JSONのみで、YAML frontendは未実装です。JSONはYAML 1.2 JSON schemaの部分集合なので、仕様上有効な形式です。
 - `observe_fp_exceptions: true`でIntrinsicごとに発生可能な例外classを網羅したかは、
   schema v1に能力宣言がないためケース作者の一次資料レビューも必要です。登録された
   regressionの型、入力ID、Intel期待値は機械検証します。現行3ケースはすべて例外観測を無効にしています。
@@ -97,6 +97,44 @@ python -m ioitf compare-results \
 
 別のOSでは、利用可能な3.11以上のPythonで同じ仮想環境を作ってください。
 インストールせずに実行する場合は各コマンドへ`PYTHONPATH=src`を付けます。
+
+## Failure bundleと`verify-replay`
+
+通常の不一致ごとに、`compare-results`は`<output>/failures/<input_id>/`へ単一入力の
+failure bundleを出力します。`verify-replay`は、両ホストで生成済みの再実行結果を
+bundle内の基準結果と不一致情報へ照合します。
+
+```sh
+python -m ioitf verify-replay \
+  --failure artifacts/comparison/failures/$INPUT_ID/failure.json \
+  --intel replay/intel/intel-results.manifest.json \
+  --openpower replay/openpower/power-results.manifest.json
+```
+
+`--failure`には`failure.json`またはその親bundleディレクトリを指定できます。
+`--intel`と`--openpower`の相対パスは現在の作業ディレクトリではなく、
+`failure.json`があるbundleディレクトリを基準に解決します。絶対パスも指定できます。
+
+検証時には、canonical JSON/JSONL、閉じたschema、schema/ABI version、固定bundle構成、
+bundle内規範ファイルのSHA-256と相互参照、単一case・入力・両roleの基準結果、
+`input_id`、case contract、used ISA contractを検査します。規範ファイルへのpathにある
+symlinkやbundle外へ出るpathも拒否し、保存済みの不一致件数と最初の差分を基準結果から再計算します。
+
+結果statusと終了コード:
+
+- `reproduced` / `0`: 両roleの結果と保存済み不一致が再現した
+- `not_reproduced` / `1`: 規範結果または不一致内容が変わった
+- `invalid_bundle` / `2`: failure bundle自体の検証に失敗した
+- `unsupported` / `3`: 開発fixtureを明示許可していない
+- `runner_error` / `4`: 再実行結果artifactの検証に失敗した
+
+CPU、compiler、build IDなどの環境差は`environment_differences`へ診断として出力され、
+それだけでは再現失敗になりません。
+
+`fixture-run`は比較器を自己テストするための純粋Python実装であり、Intel/POWER実機の
+証拠ではありません。基準または再実行結果に`development-fixture:` build IDが1件でも
+含まれる場合、`verify-replay`は既定で拒否します。開発テストに限り
+`--allow-development-fixtures`を追加してください。この許可を付けてもnative evidenceにはなりません。
 
 ## Native自己テスト
 

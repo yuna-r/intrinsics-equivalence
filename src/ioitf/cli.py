@@ -14,6 +14,7 @@ from .errors import (
     EXIT_MATCH,
     EXIT_MISMATCH,
     EXIT_RUNNER,
+    EXIT_SPECIFICATION,
     EXIT_UNSUPPORTED,
     IOITFError,
     ReferenceOracleError,
@@ -349,6 +350,75 @@ def _compare_results(args: argparse.Namespace) -> int:
     return EXIT_MISMATCH if mismatch_count else EXIT_MATCH
 
 
+def _verify_replay(args: argparse.Namespace) -> int:
+    from .replay import load_failure_bundle, verify_replay_artifacts
+
+    try:
+        bundle = load_failure_bundle(args.failure)
+    except ValidationError as exc:
+        _print(
+            {
+                "reason": str(exc),
+                "stage": "bundle_validation",
+                "status": "invalid_bundle",
+            }
+        )
+        return EXIT_SPECIFICATION
+
+    try:
+        intel_manifest = (
+            args.intel
+            if args.intel.is_absolute()
+            else bundle.root / args.intel
+        )
+        openpower_manifest = (
+            args.openpower
+            if args.openpower.is_absolute()
+            else bundle.root / args.openpower
+        )
+        verification, intel, power = verify_replay_artifacts(
+            bundle,
+            intel_manifest=intel_manifest,
+            openpower_manifest=openpower_manifest,
+        )
+    except ValidationError as exc:
+        _print(
+            {
+                "input_id": bundle.failure["input_id"],
+                "reason": str(exc),
+                "stage": "replay_result_validation",
+                "status": "runner_error",
+            }
+        )
+        return EXIT_RUNNER
+
+    development_artifacts = (
+        bundle.baseline_intel.development_fixture,
+        bundle.baseline_openpower.development_fixture,
+        intel.development_fixture,
+        power.development_fixture,
+    )
+    if any(development_artifacts) and not args.allow_development_fixtures:
+        _print(
+            {
+                "input_id": bundle.failure["input_id"],
+                "reason": "development fixtures require --allow-development-fixtures",
+                "status": "unsupported",
+            }
+        )
+        return EXIT_UNSUPPORTED
+
+    result: dict[str, JSONValue] = {
+        "environment_differences": verification.environment_differences,
+        "input_id": bundle.failure["input_id"],
+        "replay_comparison": verification.replay_comparison,
+        "result_differences": verification.result_differences,
+        "status": "reproduced" if verification.reproduced else "not_reproduced",
+    }
+    _print(result)
+    return EXIT_MATCH if verification.reproduced else EXIT_MISMATCH
+
+
 def _add_contract_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cases", required=True, type=Path)
     parser.add_argument("--isa-registry", required=True, type=Path)
@@ -404,6 +474,13 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument("--output", required=True, type=Path)
     compare.add_argument("--allow-development-fixtures", action="store_true")
     compare.set_defaults(handler=_compare_results)
+
+    verify_replay = subcommands.add_parser("verify-replay")
+    verify_replay.add_argument("--failure", required=True, type=Path)
+    verify_replay.add_argument("--intel", required=True, type=Path)
+    verify_replay.add_argument("--openpower", required=True, type=Path)
+    verify_replay.add_argument("--allow-development-fixtures", action="store_true")
+    verify_replay.set_defaults(handler=_verify_replay)
     return parser
 
 
