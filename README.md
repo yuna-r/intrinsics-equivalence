@@ -65,6 +65,19 @@ ioitf check --showcase-report
 
 派手なのは見た目だけで、判定元はこれまでどおりcanonical JSON成果物です。
 
+## IntelとOpenPOWERを見比べる
+
+[`examples/`](examples/)に、contractとOpenPOWER / VSXコードを並べてあります。
+
+| Intel Intrinsic | OpenPOWER / VSX |
+|---|---|
+| `_mm_add_pd(a, b)` | `vec_add(a, b)` |
+| `_mm_set1_pd(x)` | `vec_splats(x)` |
+| `_mm_shuffle_epi32(v, 27)` | `{v[3], v[2], v[1], v[0]}` |
+
+OpenPOWER側は[`examples/openpower/`](examples/openpower/)に、1操作1ファイルの
+短いCコードで置いてあります。ABIを含む実用側は`adapters/openpower/`です。
+
 ## ケースをひとつ増やす
 
 似ているケースをコピーします。
@@ -277,7 +290,9 @@ intrinsics-equivalence/
 ├── src/ioitf/             # CLIとartifact処理
 ├── adapters/              # native / portable adapter
 ├── contracts/             # ISA registry
-├── examples/sse2/         # example suite
+├── examples/
+│   ├── sse2/              # 24個のequivalence case
+│   └── openpower/         # 小さく読めるVSXコード例
 ├── tests/                 # framework自身のテスト
 └── ioitf.toml             # 使用するsuiteの指定
 ```

@@ -33,3 +33,6 @@ def execute(record):
 generatorとdevelopment fixtureはこのファイルを自動発見するため、中央の`if case_id ==`
 dispatchを変更する必要はありません。Intel/OpenPOWERのnative evidence adapterはCPUごとに
 別コンパイルする安全境界なので、引き続き`adapters/`に置きます。
+
+OpenPOWER / VSXの中心部分だけを先に眺めたい場合は、隣の
+[`../openpower/`](../openpower/)に短いCコード例があります。

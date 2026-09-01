@@ -30,6 +30,9 @@ Implemented:
   malformed or noncanonical ABI bytes remain `IOITF_CALL_INVALID_ABI`.
 - A Linux ppc64le VSX compatibility implementation boundary with the public symbols
   `power_mm_add_pd`, `power_mm_set1_pd`, and `power_mm_shuffle_epi32`.
+- Small reader-facing VSX examples under `examples/openpower/` for packed add,
+  scalar broadcast, and a four-lane reverse shuffle. On Linux ppc64le they are
+  compiled as the `ioitf_openpower_examples` object target.
 - A scalar portable adapter and self-test for development hosts such as arm64
   macOS. Its `portable_*` symbols are fixtures and must never be recorded as
   Intel or OpenPOWER evidence.
