@@ -7,12 +7,12 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat"></a>
 </p>
 
-**IntelとOpenPOWERに同じ問題を解かせて、答え合わせするツールです。**
+**Intel Intrinsics と OpenPOWER の互換性・等価性を検証するためのテストフレームワーク**
 
 同じ入力から結果の違いを見つけます。中ではかなり厳密に記録しますが、普段使う
 コマンドは短くしてあります。
 
-現在はadd、sub、mul、set1、shuffle、bitwise ANDの6ケースで遊べます。
+現在は算術、論理、比較、shift、レーン操作を含む24ケースあります。
 
 > まだ開発初期です。ローカルの比較フローとportable adapterは動きますが、
 > x86_64 / ppc64le実機runnerはこれからです。
@@ -35,7 +35,7 @@ ioitf check
 最後に`"status":"pass"`が出れば成功です。
 
 ```json
-{"case_count":6,"record_count":48,"status":"pass"}
+{"case_count":24,"record_count":192,"status":"pass"}
 ```
 
 `ioitf check`ひとつで、caseの確認、入力生成、両側の実行、答え合わせまで進みます。
@@ -110,6 +110,23 @@ ctest --test-dir build/native --output-on-failure
 ## 必要になったら開くところ
 
 ここから先は、いま必要な項目だけどうぞ。
+
+<details>
+<summary><strong>収録している24ケース</strong></summary>
+
+- f64 arithmetic: `_mm_add_pd`、`_mm_sub_pd`、`_mm_mul_pd`
+- f64 bit / lane: `_mm_and_pd`、`_mm_or_pd`、`_mm_xor_pd`、`_mm_set1_pd`、
+  `_mm_move_sd`、`_mm_unpacklo_pd`、`_mm_unpackhi_pd`
+- i32 arithmetic: `_mm_add_epi32`、`_mm_sub_epi32`
+- i32 logic: `_mm_and_si128`、`_mm_or_si128`、`_mm_xor_si128`、`_mm_andnot_si128`
+- i32 comparison: `_mm_cmpeq_epi32`、`_mm_cmpgt_epi32`
+- i32 shift: `_mm_slli_epi32`、`_mm_srli_epi32`、`_mm_srai_epi32`
+- i32 lane: `_mm_shuffle_epi32`、`_mm_unpacklo_epi32`、`_mm_unpackhi_epi32`
+
+24ケースすべてをdevelopment fixtureで確認できます。Native adapterの実装例があるのは
+現在、`_mm_add_pd`、`_mm_set1_pd`、`_mm_shuffle_epi32`の3ケースです。
+
+</details>
 
 <details>
 <summary><strong>case.yamlとdevelopment.pyの書き方</strong></summary>
