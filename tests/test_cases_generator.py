@@ -39,11 +39,29 @@ class CaseAndGeneratorTests(unittest.TestCase):
             self.cases.ids,
             (
                 "sse2.add.f64x2.default",
+                "sse2.add.i32x4.default",
+                "sse2.and.f64x2.default",
                 "sse2.and.i32x4.default",
+                "sse2.andnot.i32x4.default",
+                "sse2.cmpeq.i32x4.default",
+                "sse2.cmpgt.i32x4.default",
+                "sse2.move.f64x2.default",
                 "sse2.mul.f64x2.default",
+                "sse2.or.f64x2.default",
+                "sse2.or.i32x4.default",
                 "sse2.set1.f64x2.default",
                 "sse2.shuffle.i32x4.imm8",
+                "sse2.slli.i32x4.imm8",
+                "sse2.srai.i32x4.imm8",
+                "sse2.srli.i32x4.imm8",
                 "sse2.sub.f64x2.default",
+                "sse2.sub.i32x4.default",
+                "sse2.unpackhi.f64x2.default",
+                "sse2.unpackhi.i32x4.default",
+                "sse2.unpacklo.f64x2.default",
+                "sse2.unpacklo.i32x4.default",
+                "sse2.xor.f64x2.default",
+                "sse2.xor.i32x4.default",
             ),
         )
         used = project_used_isa(self.isa, self.cases)
@@ -116,7 +134,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 30)
+            self.assertEqual(first.record_count, 120)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -213,6 +231,253 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 case = self.cases.get(case_id)
                 actual = load_development_case(case).execute(record)
                 self.assertEqual(actual, expected[case_id])
+
+    def test_extended_integer_models_have_known_results(self) -> None:
+        arithmetic_record = {
+            "operands": {
+                "a": {
+                    "element": "i32",
+                    "lanes": [
+                        "0xffffffff",
+                        "0x7fffffff",
+                        "0x80000000",
+                        "0x12345678",
+                    ],
+                },
+                "b": {
+                    "element": "i32",
+                    "lanes": [
+                        "0x00000001",
+                        "0x00000002",
+                        "0xffffffff",
+                        "0xfedcba98",
+                    ],
+                },
+            }
+        }
+        arithmetic_expected = {
+            "sse2.add.i32x4.default": [
+                "0x00000000",
+                "0x80000001",
+                "0x7fffffff",
+                "0x11111110",
+            ],
+            "sse2.sub.i32x4.default": [
+                "0xfffffffe",
+                "0x7ffffffd",
+                "0x80000001",
+                "0x13579be0",
+            ],
+            "sse2.or.i32x4.default": [
+                "0xffffffff",
+                "0x7fffffff",
+                "0xffffffff",
+                "0xfefcfef8",
+            ],
+            "sse2.xor.i32x4.default": [
+                "0xfffffffe",
+                "0x7ffffffd",
+                "0x7fffffff",
+                "0xece8ece0",
+            ],
+            "sse2.andnot.i32x4.default": [
+                "0x00000000",
+                "0x00000000",
+                "0x7fffffff",
+                "0xecc8a880",
+            ],
+        }
+        for case_id, lanes in arithmetic_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    arithmetic_record
+                )
+                self.assertEqual(actual, {"return": {"element": "i32", "lanes": lanes}})
+
+        comparison_record = {
+            "operands": {
+                "a": {
+                    "element": "i32",
+                    "lanes": [
+                        "0x00000000",
+                        "0xffffffff",
+                        "0x7fffffff",
+                        "0x80000000",
+                    ],
+                },
+                "b": {
+                    "element": "i32",
+                    "lanes": [
+                        "0xffffffff",
+                        "0xfffffffe",
+                        "0x00000000",
+                        "0x80000000",
+                    ],
+                },
+            }
+        }
+        comparison_expected = {
+            "sse2.cmpeq.i32x4.default": [
+                "0x00000000",
+                "0x00000000",
+                "0x00000000",
+                "0xffffffff",
+            ],
+            "sse2.cmpgt.i32x4.default": [
+                "0xffffffff",
+                "0xffffffff",
+                "0xffffffff",
+                "0x00000000",
+            ],
+        }
+        for case_id, lanes in comparison_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    comparison_record
+                )
+                self.assertEqual(actual, {"return": {"element": "i32", "lanes": lanes}})
+
+        shift_operands = {
+            "a": {
+                "element": "i32",
+                "lanes": [
+                    "0x00000001",
+                    "0x80000000",
+                    "0xffffffff",
+                    "0x12345678",
+                ],
+            }
+        }
+        shift_expected = {
+            "sse2.slli.i32x4.imm8": [
+                "0x00000002",
+                "0x00000000",
+                "0xfffffffe",
+                "0x2468acf0",
+            ],
+            "sse2.srli.i32x4.imm8": [
+                "0x00000000",
+                "0x40000000",
+                "0x7fffffff",
+                "0x091a2b3c",
+            ],
+            "sse2.srai.i32x4.imm8": [
+                "0x00000000",
+                "0xc0000000",
+                "0xffffffff",
+                "0x091a2b3c",
+            ],
+        }
+        for case_id, lanes in shift_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    {"immediates": {"imm8": 1}, "operands": shift_operands}
+                )
+                self.assertEqual(actual, {"return": {"element": "i32", "lanes": lanes}})
+
+        wide_shift_expected = {
+            "sse2.slli.i32x4.imm8": ["0x00000000"] * 4,
+            "sse2.srli.i32x4.imm8": ["0x00000000"] * 4,
+            "sse2.srai.i32x4.imm8": [
+                "0x00000000",
+                "0xffffffff",
+                "0xffffffff",
+                "0x00000000",
+            ],
+        }
+        for case_id, lanes in wide_shift_expected.items():
+            with self.subTest(case_id=case_id, imm8=32):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    {"immediates": {"imm8": 32}, "operands": shift_operands}
+                )
+                self.assertEqual(actual, {"return": {"element": "i32", "lanes": lanes}})
+
+        unpack_record = {
+            "operands": {
+                "a": {
+                    "element": "i32",
+                    "lanes": [
+                        "0x00000001",
+                        "0x00000002",
+                        "0x00000003",
+                        "0x00000004",
+                    ],
+                },
+                "b": {
+                    "element": "i32",
+                    "lanes": [
+                        "0x0000000a",
+                        "0x0000000b",
+                        "0x0000000c",
+                        "0x0000000d",
+                    ],
+                },
+            }
+        }
+        unpack_expected = {
+            "sse2.unpacklo.i32x4.default": [
+                "0x00000001",
+                "0x0000000a",
+                "0x00000002",
+                "0x0000000b",
+            ],
+            "sse2.unpackhi.i32x4.default": [
+                "0x00000003",
+                "0x0000000c",
+                "0x00000004",
+                "0x0000000d",
+            ],
+        }
+        for case_id, lanes in unpack_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    unpack_record
+                )
+                self.assertEqual(actual, {"return": {"element": "i32", "lanes": lanes}})
+
+    def test_extended_f64_bit_models_have_known_results(self) -> None:
+        record = {
+            "operands": {
+                "a": {
+                    "element": "f64",
+                    "lanes": ["0xffff0000ffff0000", "0x0123456789abcdef"],
+                },
+                "b": {
+                    "element": "f64",
+                    "lanes": ["0x0f0f0f0f0f0f0f0f", "0xfedcba9876543210"],
+                },
+            }
+        }
+        expected = {
+            "sse2.and.f64x2.default": [
+                "0x0f0f00000f0f0000",
+                "0x0000000000000000",
+            ],
+            "sse2.or.f64x2.default": [
+                "0xffff0f0fffff0f0f",
+                "0xffffffffffffffff",
+            ],
+            "sse2.xor.f64x2.default": [
+                "0xf0f00f0ff0f00f0f",
+                "0xffffffffffffffff",
+            ],
+            "sse2.unpacklo.f64x2.default": [
+                "0xffff0000ffff0000",
+                "0x0f0f0f0f0f0f0f0f",
+            ],
+            "sse2.unpackhi.f64x2.default": [
+                "0x0123456789abcdef",
+                "0xfedcba9876543210",
+            ],
+            "sse2.move.f64x2.default": [
+                "0x0f0f0f0f0f0f0f0f",
+                "0x0123456789abcdef",
+            ],
+        }
+        for case_id, lanes in expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": {"element": "f64", "lanes": lanes}})
 
     def test_input_id_does_not_include_sequence_or_generation(self) -> None:
         record = {

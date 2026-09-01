@@ -59,7 +59,7 @@ class EndToEndTests(unittest.TestCase):
             assert isinstance(result, dict)
             self.assertEqual(result["status"], "pass")
             self.assertFalse(result["native_evidence"])
-            self.assertEqual(result["record_count"], 12)
+            self.assertEqual(result["record_count"], 48)
             self.assertTrue((output / "comparison" / "summary.json").is_file())
             self.assertEqual(result["showcase_report"], str(output / "showcase.html"))
             showcase = (output / "showcase.html").read_text(encoding="utf-8")

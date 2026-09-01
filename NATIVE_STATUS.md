@@ -2,6 +2,10 @@
 
 This directory implements the first native slice of IOITF-SPEC-001 section 6.
 
+The development suite contains 24 case packs. This native slice currently
+covers `_mm_add_pd`, `_mm_set1_pd`, and `_mm_shuffle_epi32`; the other case
+packs remain development-fixture-only until architecture adapters are added.
+
 Implemented:
 
 - ABI version 1 C structs, enum values, LP64 sizes, and every normative
@@ -16,7 +20,7 @@ Implemented:
   mode, and normalized IEEE exception flags. Native input preparation occurs
   before flags are cleared; the observation interval invokes only the target
   operation; native result extraction occurs after flags are captured.
-- The registered cases have `observe_fp_exceptions: false`, so their public ABI
+- The three native-slice cases have `observe_fp_exceptions: false`, so their public ABI
   output is always zero. The same internal capture path is independently tested
   through a test-only side channel, including the `inexact` bit.
 - Linux x86_64 SSE2 adapters with public add, broadcast, and immediate-shuffle
