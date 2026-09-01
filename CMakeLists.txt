@@ -112,15 +112,14 @@ elseif(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
   ioitf_configure_adapter(ioitf_adapter_openpower)
   target_include_directories(ioitf_adapter_openpower
                              PRIVATE adapters/openpower)
-  add_library(ioitf_openpower_examples OBJECT
-              examples/openpower/add-f64x2.c
-              examples/openpower/set1-f64x2.c
-              examples/openpower/shuffle-i32x4.c)
+  add_library(ioitf_openpower_official_suite OBJECT
+              10_official_suite/openpower/f64x2.c
+              10_official_suite/openpower/i32x4.c)
   if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # power8 is the minimum implementation profile for these VSX wrappers.
     target_compile_options(ioitf_adapter_openpower PRIVATE
                            -mcpu=power8 -maltivec -mvsx)
-    target_compile_options(ioitf_openpower_examples PRIVATE
+    target_compile_options(ioitf_openpower_official_suite PRIVATE
                            -mcpu=power8 -maltivec -mvsx
                            -Wall -Wextra -Wpedantic)
   endif()

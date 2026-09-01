@@ -1,4 +1,4 @@
-# SSE2 example suite
+# Official SSE2 ↔ OpenPOWER cases
 
 これはframework本体ではなく、独立したexample suiteです。1ケースはRubyのクラス1個に
 近い単位として、1ディレクトリへまとめます。
@@ -8,7 +8,7 @@
 `_mm_shuffle_epi32`の3ケースです。
 
 ```text
-examples/sse2/<case-name>/
+10_official_suite/cases/<case-name>/
 ├── case.yaml       # 規範contract（署名、ISA、比較規則）
 └── development.py  # 入力生成 + 非native executable model
 ```

@@ -67,7 +67,8 @@ ioitf check --showcase-report
 
 ## IntelとOpenPOWERを見比べる
 
-[`examples/`](examples/)に、contractとOpenPOWER / VSXコードを並べてあります。
+Repositoryの一番上に来る[`10_official_suite/`](10_official_suite/)へ、
+24個のcontractと全24操作のOpenPOWER / VSXコードをまとめてあります。
 
 | Intel Intrinsic | OpenPOWER / VSX |
 |---|---|
@@ -75,15 +76,15 @@ ioitf check --showcase-report
 | `_mm_set1_pd(x)` | `vec_splats(x)` |
 | `_mm_shuffle_epi32(v, 27)` | `{v[3], v[2], v[1], v[0]}` |
 
-OpenPOWER側は[`examples/openpower/`](examples/openpower/)に、1操作1ファイルの
-短いCコードで置いてあります。ABIを含む実用側は`adapters/openpower/`です。
+OpenPOWER側は[`10_official_suite/openpower/`](10_official_suite/openpower/)に、
+f64とi32の2つの大きな塊で置いてあります。ABIを含む実用側は`adapters/openpower/`です。
 
 ## ケースをひとつ増やす
 
 似ているケースをコピーします。
 
 ```sh
-cp -R examples/sse2/add-f64x2 examples/sse2/my-new-case
+cp -R 10_official_suite/cases/add-f64x2 10_official_suite/cases/my-new-case
 ```
 
 1ケースは、この小さな塊だけです。
@@ -101,7 +102,7 @@ ioitf check
 ```
 
 これでローカルのcase追加は完了です。中央の巨大なswitch文へcase IDを足す必要はありません。
-実例は[`examples/sse2/`](examples/sse2/)にあります。
+実例は[`10_official_suite/cases/`](10_official_suite/cases/)にあります。
 
 ## 変更後の確認
 
@@ -287,12 +288,10 @@ Frameworkとテストsuiteは分けてあります。
 
 ```text
 intrinsics-equivalence/
+├── 10_official_suite/     # 24 cases + 全24操作のOpenPOWER例
 ├── src/ioitf/             # CLIとartifact処理
 ├── adapters/              # native / portable adapter
 ├── contracts/             # ISA registry
-├── examples/
-│   ├── sse2/              # 24個のequivalence case
-│   └── openpower/         # 小さく読めるVSXコード例
 ├── tests/                 # framework自身のテスト
 └── ioitf.toml             # 使用するsuiteの指定
 ```

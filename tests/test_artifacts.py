@@ -33,7 +33,7 @@ class ArtifactValidationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.isa = load_isa_registry(PROJECT / "contracts" / "isa-registry.json")
         cls.cases = load_case_definitions(
-            PROJECT / "examples" / "sse2", isa_registry=cls.isa
+            PROJECT / "10_official_suite" / "cases", isa_registry=cls.isa
         )
 
     def _input(self, root: Path):

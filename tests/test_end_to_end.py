@@ -36,7 +36,7 @@ class EndToEndTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.isa_path = PROJECT / "contracts" / "isa-registry.json"
-        cls.suite_path = PROJECT / "examples" / "sse2"
+        cls.suite_path = PROJECT / "10_official_suite" / "cases"
         cls.isa = load_isa_registry(cls.isa_path)
         cls.cases = load_case_definitions(cls.suite_path, isa_registry=cls.isa)
 
