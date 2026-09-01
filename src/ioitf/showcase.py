@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Iterable, Mapping
 
 from .canonical import JSONValue, atomic_write
-from .cases import CaseDefinition
+from .cases import ELEMENT_WIDTHS, CaseDefinition
 
 
 def _text(value: object) -> str:
@@ -36,6 +36,29 @@ def _signature(case: CaseDefinition) -> str:
         assert isinstance(argument, dict)
         argument_shapes.append(f"{argument['name']}: {_shape(argument)}")
     return f"{' · '.join(argument_shapes)} → {_shape(signature['return'])}"
+
+
+def _return_vector_measurements(
+    cases: tuple[CaseDefinition, ...], vectors_each: int
+) -> tuple[int, int]:
+    """Return matrix lane positions and paired output-bit positions."""
+
+    lane_positions = 0
+    paired_bit_positions = 0
+    for case in cases:
+        return_shape = case.signature["return"]
+        assert isinstance(return_shape, dict)
+        lanes = int(return_shape.get("lanes", 1))
+        if lanes < 1:
+            raise ValueError("showcase return-vector lanes must be positive")
+        element = str(return_shape.get("element", ""))
+        try:
+            element_bits = ELEMENT_WIDTHS[element]
+        except KeyError as error:
+            raise ValueError(f"unsupported return element for showcase: {element!r}") from error
+        lane_positions += lanes * vectors_each
+        paired_bit_positions += element_bits * lanes * vectors_each
+    return lane_positions, paired_bit_positions
 
 
 def _case_cards(cases: tuple[CaseDefinition, ...], vectors_each: int) -> str:
@@ -84,6 +107,12 @@ def render_showcase_html(
     ordered_cases = tuple(cases)
     case_count = len(ordered_cases)
     record_count = int(summary["record_count"])
+    if record_count < 0:
+        raise ValueError("showcase record_count must not be negative")
+    if case_count == 0 and record_count:
+        raise ValueError("showcase records require at least one case")
+    if case_count and record_count % case_count:
+        raise ValueError("showcase record_count must divide evenly across cases")
     matched = int(summary["matched_inputs"])
     mismatched = int(summary["mismatched_inputs"])
     not_comparable = int(summary["not_comparable_inputs"])
@@ -92,6 +121,16 @@ def render_showcase_html(
     match_rate = 100.0 if record_count == 0 else matched * 100.0 / record_count
     rate_text = f"{match_rate:.2f}".rstrip("0").rstrip(".")
     vectors_each = record_count // case_count if case_count else 0
+    path_executions = record_count * 2
+    lane_positions, paired_bit_positions = _return_vector_measurements(
+        ordered_cases, vectors_each
+    )
+    bit_exact_cases = sum(
+        case.comparison["mode"] == "bit_exact" for case in ordered_cases
+    )
+    load_percent = max(0.0, min(100.0, vectors_each / 1000 * 100))
+    load_text = f"{load_percent:.2f}".rstrip("0").rstrip(".")
+    meter_value = min(vectors_each, 1000)
     generated_text = generated_at.strftime("%Y-%m-%d // %H:%M:%S UTC")
     report_id = case_definitions_sha256[:12].upper()
     status_class = {
@@ -105,8 +144,8 @@ def render_showcase_html(
         "not_comparable": "SIGNAL INCOMPLETE",
     }.get(outcome, outcome.upper())
     status_copy = {
-        "pass": "Every observed lane returned through the equivalence gate without divergence.",
-        "mismatch": "At least one observed lane crossed the gate with a divergent result.",
+        "pass": "Every observed lane completed the equivalence comparison without divergence.",
+        "mismatch": "At least one observed lane returned a divergent result.",
         "not_comparable": "One or more signals could not be compared safely.",
     }.get(outcome, "Verification sequence completed.")
     evidence_label = "NATIVE EVIDENCE" if native_evidence else "DEVELOPMENT SIMULATION"
@@ -114,6 +153,42 @@ def render_showcase_html(
         "Results were captured from architecture-specific native runners."
         if native_evidence
         else "Portable development fixtures were used. This is not CPU-native evidence."
+    )
+    lane_metric_label = (
+        "LANE VERDICTS" if outcome == "pass" else "MATRIX LANE POSITIONS"
+    )
+    output_metric_label = (
+        "BIT-EXACT POSITIONS"
+        if outcome == "pass" and case_count > 0 and bit_exact_cases == case_count
+        else "PAIRED OUTPUT-BIT POSITIONS"
+    )
+    intel_path_copy = (
+        "x86_64 // NATIVE RUNNER"
+        if native_evidence
+        else "SSE2 SEMANTICS // DEV FIXTURE"
+    )
+    power_path_copy = (
+        "ppc64le // NATIVE RUNNER"
+        if native_evidence
+        else "VSX SEMANTICS // DEV FIXTURE"
+    )
+    observatory_label = (
+        "CROSS-ARCHITECTURE OBSERVATORY"
+        if native_evidence
+        else "SEMANTIC EQUIVALENCE OBSERVATORY"
+    )
+    hero_copy = (
+        "A deterministic signal crossed two native architectures. Every observable bit returned to the same coordinate."
+        if native_evidence
+        else "A deterministic signal crossed paired development fixtures. Every comparable bit returned to the same coordinate."
+    )
+    trial_label = (
+        "DETERMINISTIC CROSS-ARCH TRIALS"
+        if native_evidence
+        else "DETERMINISTIC PAIRED-FIXTURE TRIALS"
+    )
+    path_activity_label = (
+        "PATH EXECUTIONS" if native_evidence else "FIXTURE PATH EVALUATIONS"
     )
     cards = _case_cards(ordered_cases, vectors_each)
 
@@ -181,6 +256,10 @@ def render_showcase_html(
     @keyframes reveal {{
       from {{ opacity: 0; transform: translateY(14px); }}
       to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    @keyframes load-rise {{
+      from {{ opacity: .2; transform: scaleY(0); }}
+      to {{ opacity: 1; transform: scaleY(1); }}
     }}
     .shell {{ width: min(1240px, calc(100% - 36px)); margin: 0 auto; padding: 28px 0 64px; }}
     .chrome {{
@@ -250,7 +329,146 @@ def render_showcase_html(
     .metric::after {{ content: attr(data-code); position: absolute; right: 9px; top: 8px; color: rgba(124,247,255,.16); font-size: 9px; }}
     .metric strong {{ display: block; font: 700 clamp(28px, 4vw, 46px)/1 var(--display); }}
     .metric span {{ display: block; margin-top: 9px; color: var(--muted); font-size: 9px; letter-spacing: .19em; text-transform: uppercase; }}
+    .load-spectrum-section {{
+      margin-top: 0;
+      border: 1px solid var(--line);
+      border-top: 0;
+      background:
+        linear-gradient(90deg, rgba(124,247,255,.05) 1px, transparent 1px),
+        linear-gradient(rgba(124,247,255,.05) 1px, transparent 1px),
+        linear-gradient(135deg, rgba(20,63,121,.72), rgba(67,42,132,.58) 58%, rgba(17,101,151,.5));
+      background-size: 34px 34px, 34px 34px, auto;
+    }}
+    .load-spectrum-layout {{
+      min-height: 740px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, .42fr);
+    }}
+    .density-ledger {{ padding: clamp(34px, 6vw, 72px); background: linear-gradient(145deg, rgba(20,48,101,.28), rgba(70,40,132,.2)); }}
+    .density-title {{ margin-top: 10px; max-width: 720px; }}
+    .density-copy {{
+      max-width: 680px;
+      margin: 20px 0 38px;
+      color: #c0d8e9;
+      font: 15px/1.75 var(--display);
+      letter-spacing: .025em;
+    }}
+    .density-evidence {{
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 9px 11px;
+      border: 1px solid var(--amber);
+      color: var(--amber);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }}
+    .load-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }}
+    .load-cell {{
+      --cell-accent: var(--cyan);
+      position: relative;
+      min-height: 132px;
+      padding: 22px;
+      border: 1px solid rgba(174,217,255,.24);
+      border-top: 3px solid var(--cell-accent);
+      background: linear-gradient(135deg, rgba(27,69,133,.72), rgba(48,37,105,.64));
+      overflow: hidden;
+    }}
+    .load-cell::after {{
+      content: attr(data-channel);
+      position: absolute;
+      top: 9px;
+      right: 10px;
+      color: rgba(124,247,255,.2);
+      font-size: 8px;
+      letter-spacing: .16em;
+    }}
+    .load-cell:nth-child(2) {{ --cell-accent: #70ffd1; background: linear-gradient(135deg, rgba(26,91,116,.72), rgba(35,58,123,.64)); }}
+    .load-cell:nth-child(3) {{ --cell-accent: #a991ff; background: linear-gradient(135deg, rgba(52,57,137,.72), rgba(76,42,126,.64)); }}
+    .load-cell:nth-child(4) {{ --cell-accent: #e7f66b; background: linear-gradient(135deg, rgba(64,88,119,.72), rgba(69,55,118,.64)); }}
+    .load-cell:nth-child(5) {{ --cell-accent: #73a7ff; background: linear-gradient(135deg, rgba(37,75,142,.72), rgba(57,42,125,.64)); }}
+    .load-cell:nth-child(6) {{ --cell-accent: #ff9d42; background: linear-gradient(135deg, rgba(78,77,118,.72), rgba(77,48,113,.64)); }}
+    .load-cell.primary {{ grid-column: 1 / -1; min-height: 164px; background: linear-gradient(120deg, rgba(25,96,149,.82), rgba(57,51,145,.72), rgba(23,115,147,.7)); }}
+    .load-cell strong {{
+      display: block;
+      margin-top: 14px;
+      color: var(--text);
+      font: 780 clamp(34px, 5vw, 62px)/.9 var(--display);
+      letter-spacing: -.025em;
+    }}
+    .load-cell.primary strong {{ color: var(--ok); font-size: clamp(48px, 7vw, 86px); text-shadow: 0 0 30px rgba(115,255,210,.16); }}
+    .load-cell span {{ color: var(--cyan); font-size: 8px; letter-spacing: .2em; text-transform: uppercase; }}
+    .load-cell small {{ display: block; margin-top: 13px; color: #6f879a; font-size: 9px; line-height: 1.5; letter-spacing: .08em; text-transform: uppercase; }}
+    .load-cell.divergence strong {{ color: var(--ok); }}
+    .mismatch .load-cell.divergence strong {{ color: var(--red); text-shadow: 0 0 24px rgba(255,94,122,.22); }}
+    .density-note {{
+      margin: 24px 0 0;
+      padding-left: 13px;
+      border-left: 1px solid var(--amber);
+      color: #a8c3d9;
+      font-size: 9px;
+      line-height: 1.65;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }}
+    .load-chart-panel {{
+      min-height: 740px;
+      padding: 38px 28px 34px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-left: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(32,66,127,.8), rgba(60,42,126,.74));
+    }}
+    .load-chart-label {{ align-self: stretch; color: var(--amber); font-size: 8px; letter-spacing: .23em; text-align: center; text-transform: uppercase; }}
+    .load-profile {{
+      margin-top: 14px;
+      padding: 6px 9px;
+      border: 1px solid rgba(124,247,255,.28);
+      color: var(--cyan);
+      font-size: 8px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }}
+    .load-chart {{ --load-level: 0%; width: min(360px, 100%); margin: 30px auto 18px; }}
+    .load-chart-frame {{ --plot-height: 470px; height: var(--plot-height); display: grid; grid-template-columns: 54px minmax(0, 1fr); }}
+    .load-y-axis {{ position: relative; border-right: 2px solid rgba(237,250,255,.74); }}
+    .load-axis-label {{
+      position: absolute;
+      right: 10px;
+      bottom: var(--level);
+      transform: translateY(50%);
+      color: #c0d8e9;
+      font-size: 9px;
+      letter-spacing: .08em;
+    }}
+    .load-plot {{ position: relative; border-bottom: 2px solid rgba(237,250,255,.74); overflow: hidden; background: rgba(39,64,126,.3); }}
+    .load-gridline {{ position: absolute; right: 0; bottom: var(--level); left: 0; border-top: 1px solid rgba(199,225,255,.22); }}
+    .load-bar {{
+      position: absolute;
+      bottom: 0;
+      left: 18%;
+      width: 46%;
+      height: var(--load-level);
+      transform-origin: bottom;
+      background: linear-gradient(to top, #58e9ff 0%, #70ffd1 38%, #e7f66b 70%, #ff9d42 100%);
+      background-position: bottom;
+      background-size: 100% var(--plot-height);
+      box-shadow: 8px 0 0 rgba(124,247,255,.08);
+      animation: load-rise .8s cubic-bezier(.2,.7,.2,1) both;
+    }}
+    .load-bar::after {{ content: ""; position: absolute; inset: 0; border: 1px solid rgba(237,250,255,.42); }}
+    .load-marker {{ position: absolute; right: 0; bottom: var(--load-level); left: 0; border-top: 2px solid var(--text); box-shadow: 0 0 12px rgba(237,250,255,.28); }}
+    .load-marker span {{ position: absolute; top: 8px; right: 0; padding: 5px 7px; border-left: 2px solid var(--text); background: rgba(45,56,123,.9); color: var(--text); font-size: 8px; letter-spacing: .12em; }}
+    .load-x-label {{ margin-top: 13px; color: #c0d8e9; font-size: 9px; letter-spacing: .22em; text-align: center; }}
+    .load-readout {{ text-align: center; }}
+    .load-readout strong {{ display: block; color: var(--amber); font: 800 48px/.9 var(--display); text-shadow: 0 0 24px rgba(255,203,107,.16); }}
+    .load-readout span {{ display: block; margin-top: 9px; color: #bdd4e6; font-size: 8px; letter-spacing: .2em; }}
+    .load-baseline {{ margin-top: 14px; color: #a8c3d9; font-size: 8px; line-height: 1.55; letter-spacing: .12em; text-align: center; text-transform: uppercase; }}
+    .load-spectrum-key {{ width: min(260px, 100%); height: 5px; margin-top: auto; background: linear-gradient(90deg, #58e9ff, #70ffd1, #e7f66b, #ff9d42); box-shadow: 0 0 12px rgba(112,255,209,.2); }}
     section {{ margin-top: 74px; }}
+    section.load-spectrum-section {{ margin-top: 0; }}
     .section-head {{ display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 22px; }}
     .kicker {{ color: var(--violet); font-size: 9px; letter-spacing: .26em; text-transform: uppercase; }}
     h2 {{ margin: 8px 0 0; font: 750 clamp(28px, 5vw, 56px)/1 var(--display); letter-spacing: -.025em; text-transform: uppercase; }}
@@ -296,6 +514,8 @@ def render_showcase_html(
       .metrics {{ grid-template-columns: repeat(2, 1fr); }}
       .metric:nth-child(2) {{ border-right: 0; }}
       .metric:nth-child(-n+2) {{ border-bottom: 1px solid var(--line); }}
+      .load-spectrum-layout {{ grid-template-columns: 1fr; }}
+      .load-chart-panel {{ min-height: 650px; border-top: 1px solid var(--line); border-left: 0; }}
       .split, .evidence {{ grid-template-columns: 1fr; }}
     }}
     @media (max-width: 580px) {{
@@ -304,6 +524,11 @@ def render_showcase_html(
       .hero {{ padding: 44px 20px; }}
       h1 {{ font-size: 49px; }}
       .metrics, .case-grid {{ grid-template-columns: 1fr; }}
+      .density-ledger {{ padding: 42px 20px; }}
+      .load-grid {{ grid-template-columns: 1fr; }}
+      .load-cell.primary {{ grid-column: auto; }}
+      .load-chart-panel {{ padding-right: 18px; padding-left: 18px; }}
+      .load-chart-frame {{ --plot-height: 420px; grid-template-columns: 48px minmax(0, 1fr); }}
       .metric, .metric:nth-child(2) {{ border-right: 0; border-bottom: 1px solid var(--line); }}
       .metric:last-child {{ border-bottom: 0; }}
       .routes {{ grid-template-columns: 1fr; }}
@@ -318,7 +543,7 @@ def render_showcase_html(
 <body class="{_text(status_class)}">
   <main class="shell">
     <div class="chrome">
-      <div class="chrome-left"><span class="lights"><i></i><i></i><i></i></span> IOITF // CROSS-ARCHITECTURE OBSERVATORY</div>
+      <div class="chrome-left"><span class="lights"><i></i><i></i><i></i></span> IOITF // {_text(observatory_label)}</div>
       <div>REPORT {_text(report_id)} // {_text(generated_text)}</div>
     </div>
 
@@ -326,7 +551,7 @@ def render_showcase_html(
       <div>
         <div class="eyebrow">Operation Nightglass</div>
         <h1>Intrinsic <span>Equivalence</span></h1>
-        <p class="lede">A deterministic signal crossed two architectures. Every observable bit returned to the same coordinate.</p>
+        <p class="lede">{_text(hero_copy)}</p>
         <div class="status-line">{_text(status_title)} // {_text(outcome).upper()}</div>
       </div>
       <div class="core-wrap" aria-label="Equivalence coherence visualization">
@@ -344,16 +569,89 @@ def render_showcase_html(
       <div class="metric" data-code="D-04"><strong>{mismatched + not_comparable}</strong><span>Anomalies observed</span></div>
     </div>
 
+    <section class="load-spectrum-section" aria-labelledby="load-spectrum-title">
+      <div class="load-spectrum-layout">
+        <div class="density-ledger">
+          <div class="kicker">Test load spectrum</div>
+          <h2 class="density-title" id="load-spectrum-title">Verification density</h2>
+          <p class="density-copy">A deterministic workload was evaluated across paired paths, then resolved at lane and bit-position granularity. These counts are derived from the canonical record stream and declared return-vector shapes.</p>
+          <div class="density-evidence">{_text(evidence_label)}</div>
+          <div class="load-grid">
+            <div class="load-cell primary" data-channel="LOAD-01">
+              <span>{_text(trial_label)}</span>
+              <strong>{record_count:,}</strong>
+              <small>Canonical input records presented to the paired equivalence comparison</small>
+            </div>
+            <div class="load-cell" data-channel="PATH-02">
+              <span>{_text(path_activity_label)}</span>
+              <strong>{path_executions:,}</strong>
+              <small>Two implementation-path observations per deterministic trial</small>
+            </div>
+            <div class="load-cell" data-channel="LANE-03">
+              <span>{_text(lane_metric_label)}</span>
+              <strong>{lane_positions:,}</strong>
+              <small>Declared return lanes multiplied by vectors per case</small>
+            </div>
+            <div class="load-cell" data-channel="BIT-04">
+              <span>{_text(output_metric_label)}</span>
+              <strong>{paired_bit_positions:,}</strong>
+              <small>Observed output bits compared as paired positions at declared element width</small>
+            </div>
+            <div class="load-cell" data-channel="MODE-05">
+              <span>Bit-exact contracts</span>
+              <strong>{bit_exact_cases:,}</strong>
+              <small>Cases whose comparison mode requires exact output representation</small>
+            </div>
+            <div class="load-cell divergence" data-channel="DIV-00">
+              <span>Divergence atoms</span>
+              <strong>{mismatch_atoms:,}</strong>
+              <small>{not_comparable:,} non-comparable inputs reported independently</small>
+            </div>
+          </div>
+          <p class="density-note">Workload counts do not expand the evidence boundary. The capture classification above identifies whether these observations came from native runners or development fixtures.</p>
+        </div>
+        <aside class="load-chart-panel" aria-label="Test load spectrum graph">
+          <div class="load-chart-label">Standard load scale // 1,000 vectors per case</div>
+          <div class="load-profile">Profile // {_text(str(profile).upper())}</div>
+          <div class="load-chart" role="meter" aria-label="Verification density by vectors per case" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="{meter_value}" aria-valuetext="{vectors_each:,} vectors per case; standard load scale {_text(load_text)} percent" style="--load-level:{_text(load_text)}%">
+            <div class="load-chart-frame">
+              <div class="load-y-axis" aria-hidden="true">
+                <span class="load-axis-label" style="--level:100%">1000</span>
+                <span class="load-axis-label" style="--level:75%">750</span>
+                <span class="load-axis-label" style="--level:50%">500</span>
+                <span class="load-axis-label" style="--level:25%">250</span>
+                <span class="load-axis-label" style="--level:0%">0</span>
+              </div>
+              <div class="load-plot" aria-hidden="true">
+                <i class="load-gridline" style="--level:100%"></i>
+                <i class="load-gridline" style="--level:75%"></i>
+                <i class="load-gridline" style="--level:50%"></i>
+                <i class="load-gridline" style="--level:25%"></i>
+                <i class="load-gridline" style="--level:0%"></i>
+                <div class="load-bar"></div>
+                <div class="load-marker"><span>ACTUAL // {vectors_each:,}</span></div>
+              </div>
+            </div>
+            <div class="load-x-label">VECTORS / CASE</div>
+          </div>
+          <div class="load-readout"><strong>{vectors_each:,}</strong><span>ACTUAL VECTORS / CASE</span></div>
+          <div class="load-baseline">Load density {_text(load_text)}% // 1,000 vectors per case = standard</div>
+          <div class="load-spectrum-key" aria-hidden="true"></div>
+          <div class="load-baseline">Cyan → green → yellow → orange load spectrum<br>Failure indication remains red</div>
+        </aside>
+      </div>
+    </section>
+
     <section>
       <div class="section-head">
         <div><div class="kicker">Transmission topology</div><h2>Dual-path verification</h2></div>
-        <div class="section-code">PROFILE {_text(profile).upper()}<br>SEED {_text(seed)}</div>
+        <div class="section-code">PROFILE {_text(str(profile).upper())}<br>SEED {_text(seed)}</div>
       </div>
       <div class="split">
         <div class="panel routes">
-          <div class="route-node"><b>INTEL</b><small>x86_64 // SSE2 PATH</small></div>
+          <div class="route-node"><b>INTEL</b><small>{_text(intel_path_copy)}</small></div>
           <div class="route-beam"></div>
-          <div class="route-node"><b>OPENPOWER</b><small>ppc64le // VSX PATH</small></div>
+          <div class="route-node"><b>OPENPOWER</b><small>{_text(power_path_copy)}</small></div>
         </div>
         <div class="panel">
           <div class="panel-label">Integrity matrix</div>
@@ -362,7 +660,7 @@ def render_showcase_html(
             <div class="matrix-row"><span>Vector stream</span><b>DETERMINISTIC</b></div>
             <div class="matrix-row"><span>Matched inputs</span><b>{matched:04d}</b></div>
             <div class="matrix-row"><span>Mismatch atoms</span><b>{mismatch_atoms:04d}</b></div>
-            <div class="matrix-row"><span>Gate outcome</span><b>{_text(outcome).upper()}</b></div>
+            <div class="matrix-row"><span>Comparison outcome</span><b>{_text(outcome).upper()}</b></div>
           </div>
         </div>
       </div>

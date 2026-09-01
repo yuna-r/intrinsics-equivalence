@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import platform
-from typing import Protocol
+from typing import Callable, Protocol
 
 from .canonical import (
     JSONValue,
@@ -48,6 +48,7 @@ def _result_records(
     *,
     cases: CaseRegistry,
     role: str,
+    progress: Callable[[int], None] | None = None,
 ) -> list[dict[str, JSONValue]]:
     results: list[dict[str, JSONValue]] = []
     for input_record in input_artifact.records:
@@ -63,6 +64,8 @@ def _result_records(
         }
         validate_result_record(result, case, role=role, input_record=input_record)
         results.append(result)
+        if progress is not None:
+            progress(len(results))
     return results
 
 
@@ -190,6 +193,7 @@ def run_fixture(
     isa_registry: ISARegistry,
     role: str,
     output: str | Path,
+    progress: Callable[[int], None] | None = None,
 ) -> FixtureRunResult:
     """Execute the portable fixture and publish a complete result artifact."""
 
@@ -204,7 +208,9 @@ def run_fixture(
     manifest_path = output_directory / f"{stem}-results.manifest.json"
     remove_completion_marker(manifest_path)
 
-    results = _result_records(input_artifact, cases=cases, role=role)
+    results = _result_records(
+        input_artifact, cases=cases, role=role, progress=progress
+    )
     count, byte_length, results_sha = write_jsonl(results_path, results)
     if count != len(input_artifact.records):
         raise ValidationError("fixture result count differs from input record count")

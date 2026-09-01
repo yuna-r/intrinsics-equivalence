@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 import copy
 from datetime import datetime, timezone
 import io
 from pathlib import Path
 import sys
-from typing import Sequence
+import time
+from typing import Callable, Iterator, Sequence, TextIO
 
 from .canonical import JSONValue, atomic_write, dump_bytes, dumps
 from .cases import CaseRegistry, load_case_definitions
@@ -25,7 +26,7 @@ from .errors import (
     UnsupportedError,
     ValidationError,
 )
-from .generator import DEFAULT_SEED, generate_artifact
+from .generator import DEFAULT_SEED, PROFILE_COUNTS, generate_artifact
 from .isa import ISARegistry, load_isa_registry
 from .project import load_project
 from .records import derive_input_id
@@ -50,6 +51,99 @@ def _contracts(args: argparse.Namespace) -> tuple[CaseRegistry, ISARegistry]:
 
 def _print(value: JSONValue) -> None:
     print(dumps(value))
+
+
+class _CheckProgress:
+    """Small dependency-free progress display that leaves stdout machine-readable."""
+
+    _STEPS = 7
+    _BAR_WIDTH = 22
+
+    def __init__(self, *, enabled: bool, stream: TextIO | None = None):
+        self.enabled = enabled
+        self.stream = sys.stderr if stream is None else stream
+        isatty = getattr(self.stream, "isatty", None)
+        self.interactive = bool(isatty is not None and isatty())
+        self._step = 0
+        self._label = ""
+        self._total: int | None = None
+        self._current = 0
+        self._last_percent = -1
+        self._last_width = 0
+        self._started = 0.0
+
+    @contextmanager
+    def stage(
+        self, step: int, label: str, *, total: int | None = None
+    ) -> Iterator[Callable[[int], None]]:
+        if not self.enabled:
+            yield lambda _current: None
+            return
+        self._step = step
+        self._label = label
+        self._total = total
+        self._current = 0
+        self._last_percent = -1
+        self._started = time.monotonic()
+        if self.interactive:
+            self._render(force=True)
+        else:
+            print(f"[{step}/{self._STEPS}] {label}...", file=self.stream, flush=True)
+        try:
+            yield self.update
+        except BaseException:
+            self._finish(success=False)
+            raise
+        else:
+            self._finish(success=True)
+
+    def update(self, current: int) -> None:
+        if not self.enabled or self._total is None:
+            return
+        self._current = max(0, min(current, self._total))
+        if self.interactive:
+            self._render()
+
+    def _format_line(self) -> str:
+        prefix = f"[{self._step}/{self._STEPS}] {self._label:<25}"
+        if self._total is None:
+            return prefix.rstrip()
+        percent = 100 if self._total == 0 else self._current * 100 // self._total
+        filled = percent * self._BAR_WIDTH // 100
+        bar = "=" * filled + "-" * (self._BAR_WIDTH - filled)
+        return (
+            f"{prefix} [{bar}] {percent:3d}% "
+            f"{self._current:,}/{self._total:,}"
+        )
+
+    def _render(self, *, force: bool = False) -> None:
+        if self._total is not None:
+            percent = 100 if self._total == 0 else self._current * 100 // self._total
+            if not force and percent == self._last_percent:
+                return
+            self._last_percent = percent
+        line = self._format_line()
+        self.stream.write("\r" + line.ljust(self._last_width))
+        self.stream.flush()
+        self._last_width = max(self._last_width, len(line))
+
+    def _finish(self, *, success: bool) -> None:
+        elapsed = time.monotonic() - self._started
+        if success and self._total is not None:
+            self._current = self._total
+        suffix = f"  {'done' if success else 'failed'} {elapsed:.1f}s"
+        if self.interactive:
+            line = self._format_line() + suffix
+            self.stream.write("\r" + line.ljust(self._last_width) + "\n")
+            self.stream.flush()
+            self._last_width = 0
+            return
+        state = "done" if success else "failed"
+        print(
+            f"[{self._step}/{self._STEPS}] {self._label}: {state} ({elapsed:.1f}s)",
+            file=self.stream,
+            flush=True,
+        )
 
 
 def _validate_cases(args: argparse.Namespace) -> int:
@@ -312,7 +406,8 @@ def _compare_results(args: argparse.Namespace) -> int:
     )
     reports: list[RecordReport] = []
     saw_unsupported = False
-    for input_record in input_artifact.records:
+    progress = getattr(args, "progress", None)
+    for record_number, input_record in enumerate(input_artifact.records, 1):
         input_id = str(input_record["input_id"])
         intel_record = intel_artifact.records[input_id]
         power_record = power_artifact.records[input_id]
@@ -342,6 +437,8 @@ def _compare_results(args: argparse.Namespace) -> int:
             )
             failure_path = str(bundle.relative_to(output) / "failure.json")
         reports.append(RecordReport(case.id, input_id, comparison, failure_path))
+        if progress is not None:
+            progress(record_number)
 
     files = write_reports(output, reports)
     mismatch_count = sum(item.comparison.outcome == "mismatch" for item in reports)
@@ -445,88 +542,126 @@ def _development_check(args: argparse.Namespace) -> int:
     from .fixture import run_fixture
 
     started_at = datetime.now(timezone.utc)
-    cases_path, isa_path = _contract_paths(args)
-    isa = load_isa_registry(isa_path)
-    cases = load_case_definitions(cases_path, isa_registry=isa)
-    if args.output is None:
-        stamp = started_at.strftime("%Y%m%dT%H%M%S%fZ")
-        output = Path(".ioitf") / "checks" / stamp
-    else:
-        output = args.output
-    if output.exists():
-        raise ValidationError(f"check output already exists; choose a fresh path: {output}")
+    progress = _CheckProgress(enabled=not args.quiet)
+    with progress.stage(1, "Prepare suite"):
+        cases_path, isa_path = _contract_paths(args)
+        isa = load_isa_registry(isa_path)
+        cases = load_case_definitions(cases_path, isa_registry=isa)
+        if args.output is None:
+            stamp = started_at.strftime("%Y%m%dT%H%M%S%fZ")
+            output = Path(".ioitf") / "checks" / stamp
+        else:
+            output = args.output
+        if output.exists():
+            raise ValidationError(
+                f"check output already exists; choose a fresh path: {output}"
+            )
 
-    generated = generate_artifact(
-        cases=cases,
-        isa_registry=isa,
-        output=output / "vectors",
-        profile=args.profile,
-        count_per_case=args.count_per_case,
-        seed=args.seed,
+    requested_count = (
+        PROFILE_COUNTS[args.profile]
+        if args.count_per_case is None
+        else args.count_per_case
     )
-    inputs = validate_input_artifact(generated.manifest_path, cases, isa)
-    intel = run_fixture(
-        input_artifact=inputs,
-        cases=cases,
-        isa_registry=isa,
-        role="intel",
-        output=output / "intel",
+    expected_records = (
+        len(cases) * requested_count if requested_count > 0 else None
     )
-    openpower = run_fixture(
-        input_artifact=inputs,
-        cases=cases,
-        isa_registry=isa,
-        role="openpower",
-        output=output / "openpower",
-    )
-    validate_result_artifact(
-        intel.manifest_path, cases, isa, input_artifact=inputs
-    )
-    validate_result_artifact(
-        openpower.manifest_path, cases, isa, input_artifact=inputs
-    )
+    with progress.stage(
+        2, "Generate test vectors", total=expected_records
+    ) as update:
+        generated = generate_artifact(
+            cases=cases,
+            isa_registry=isa,
+            output=output / "vectors",
+            profile=args.profile,
+            count_per_case=args.count_per_case,
+            seed=args.seed,
+            progress=update,
+        )
+        inputs = validate_input_artifact(generated.manifest_path, cases, isa)
+
+    with progress.stage(
+        3, "Run Intel fixture", total=generated.record_count
+    ) as update:
+        intel = run_fixture(
+            input_artifact=inputs,
+            cases=cases,
+            isa_registry=isa,
+            role="intel",
+            output=output / "intel",
+            progress=update,
+        )
+        validate_result_artifact(
+            intel.manifest_path, cases, isa, input_artifact=inputs
+        )
+
+    with progress.stage(
+        4, "Run OpenPOWER fixture", total=generated.record_count
+    ) as update:
+        openpower = run_fixture(
+            input_artifact=inputs,
+            cases=cases,
+            isa_registry=isa,
+            role="openpower",
+            output=output / "openpower",
+            progress=update,
+        )
+        validate_result_artifact(
+            openpower.manifest_path, cases, isa, input_artifact=inputs
+        )
 
     comparison = output / "comparison"
-    compare_args = argparse.Namespace(
-        allow_development_fixtures=True,
-        cases=cases_path,
-        input=generated.manifest_path,
-        intel=intel.manifest_path,
-        isa_registry=isa_path,
-        openpower=openpower.manifest_path,
-        output=comparison,
-    )
-    with redirect_stdout(io.StringIO()):
-        exit_code = _compare_results(compare_args)
-
-    from .canonical import read_canonical_json
-
-    summary = read_canonical_json(comparison / "summary.json")
-    assert isinstance(summary, dict)
-    result: dict[str, JSONValue] = {
-        "artifacts": str(output),
-        "case_count": len(cases),
-        "development_fixture": True,
-        "native_evidence": False,
-        "record_count": generated.record_count,
-        "status": summary["outcome"],
-    }
-    if args.showcase_report:
-        from .showcase import write_showcase_report
-
-        showcase = write_showcase_report(
-            output / "showcase.html",
-            cases=cases,
-            summary=summary,
-            profile=args.profile,
-            seed=args.seed,
-            vector_sha256=generated.sha256,
-            case_definitions_sha256=generated.case_definitions_sha256,
-            isa_contract_sha256=generated.used_isa_contract.sha256,
-            generated_at=started_at,
-            native_evidence=False,
+    with progress.stage(
+        5, "Validate + compare results", total=generated.record_count
+    ) as update:
+        compare_args = argparse.Namespace(
+            allow_development_fixtures=True,
+            cases=cases_path,
+            input=generated.manifest_path,
+            intel=intel.manifest_path,
+            isa_registry=isa_path,
+            openpower=openpower.manifest_path,
+            output=comparison,
+            progress=update,
         )
-        result["showcase_report"] = str(showcase)
+        with redirect_stdout(io.StringIO()):
+            exit_code = _compare_results(compare_args)
+
+    report_label = (
+        "Build showcase report" if args.showcase_report else "Finalize artifacts"
+    )
+    with progress.stage(6, report_label):
+        from .canonical import read_canonical_json
+
+        summary = read_canonical_json(comparison / "summary.json")
+        assert isinstance(summary, dict)
+        result: dict[str, JSONValue] = {
+            "artifacts": str(output),
+            "case_count": len(cases),
+            "development_fixture": True,
+            "native_evidence": False,
+            "record_count": generated.record_count,
+            "status": summary["outcome"],
+        }
+        if args.showcase_report:
+            from .showcase import write_showcase_report
+
+            showcase = write_showcase_report(
+                output / "showcase.html",
+                cases=cases,
+                summary=summary,
+                profile=args.profile,
+                seed=args.seed,
+                vector_sha256=generated.sha256,
+                case_definitions_sha256=generated.case_definitions_sha256,
+                isa_contract_sha256=generated.used_isa_contract.sha256,
+                generated_at=started_at,
+                native_evidence=False,
+            )
+            result["showcase_report"] = str(showcase)
+
+    status = str(summary["outcome"]).upper()
+    with progress.stage(7, f"{status} - {generated.record_count:,} trials"):
+        pass
     _print(result)
     return exit_code
 
@@ -566,6 +701,11 @@ def _parser() -> argparse.ArgumentParser:
         "--showcase-report",
         action="store_true",
         help="write a self-contained presentation-style HTML report",
+    )
+    check.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress progress on stderr; final JSON still goes to stdout",
     )
     check.set_defaults(handler=_development_check)
 

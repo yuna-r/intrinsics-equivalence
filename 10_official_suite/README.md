@@ -5,7 +5,7 @@
   <img alt="OpenPOWER" src="https://img.shields.io/badge/OpenPOWER-POWER8-cb2027?style=flat">
   <img alt="VSX" src="https://img.shields.io/badge/SIMD-VSX-f7b500?style=flat">
   <img alt="48 cases" src="https://img.shields.io/badge/cases-48-7c4dff?style=flat">
-  <img alt="960 standard vectors" src="https://img.shields.io/badge/standard_vectors-960-00bfa5?style=flat">
+  <img alt="48,000 standard vectors" src="https://img.shields.io/badge/standard_vectors-48k-00bfa5?style=flat">
   <img alt="Cross build passing" src="https://img.shields.io/badge/Clang_cross_build-passing-2ea44f?style=flat&amp;logo=llvm">
 </p>
 
@@ -49,7 +49,7 @@ Intel側はx86-64 ELF、OpenPOWER側はOpenPOWER ELF V2 ABIのppc64le objectに�
 その結果をnative evidenceとして収集するrunnerです。
 
 ```sh
-ioitf check --profile standard --count-per-case 20 --showcase-report
+ioitf check --profile standard --count-per-case 1000 --showcase-report
 ```
 
-この1コマンドで48ケース・960 vectorsの比較とSFレポート生成まで進みます。
+この1コマンドで48ケース・48,000 vectorsの比較とSFレポート生成まで進みます。

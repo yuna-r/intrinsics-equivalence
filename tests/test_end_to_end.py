@@ -23,7 +23,7 @@ from ioitf.canonical import (  # noqa: E402
     write_jsonl,
 )
 from ioitf.cases import load_case_definitions  # noqa: E402
-from ioitf.cli import main  # noqa: E402
+from ioitf.cli import _CheckProgress, main  # noqa: E402
 from ioitf.compare import compare_result_records  # noqa: E402
 from ioitf.fixture import run_fixture  # noqa: E402
 from ioitf.generator import generate_artifact  # noqa: E402
@@ -44,7 +44,8 @@ class EndToEndTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "check"
             stdout = io.StringIO()
-            with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
                 exit_code = main(
                     [
                         "check",
@@ -66,6 +67,52 @@ class EndToEndTests(unittest.TestCase):
             self.assertIn("COHERENCE CONFIRMED", showcase)
             self.assertIn("sse2.shuffle.i32x4.imm8", showcase)
             self.assertIn("DEVELOPMENT SIMULATION", showcase)
+            progress = stderr.getvalue()
+            self.assertIn("[1/7] Prepare suite...", progress)
+            self.assertIn("[2/7] Generate test vectors: done", progress)
+            self.assertIn("[3/7] Run Intel fixture: done", progress)
+            self.assertIn("[4/7] Run OpenPOWER fixture: done", progress)
+            self.assertIn("[5/7] Validate + compare results: done", progress)
+            self.assertIn("[6/7] Build showcase report: done", progress)
+            self.assertIn("[7/7] PASS - 96 trials: done", progress)
+
+    def test_check_quiet_keeps_stderr_empty_and_stdout_canonical(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "quiet-check"
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                exit_code = main(
+                    [
+                        "check",
+                        "--project", str(PROJECT / "ioitf.toml"),
+                        "--output", str(output),
+                        "--count-per-case", "2",
+                        "--quiet",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            result = loads(stdout.getvalue().strip())
+            assert isinstance(result, dict)
+            self.assertEqual(result["status"], "pass")
+            self.assertEqual(stderr.getvalue(), "")
+
+    def test_interactive_progress_updates_one_terminal_line(self) -> None:
+        class TTYBuffer(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+        stream = TTYBuffer()
+        progress = _CheckProgress(enabled=True, stream=stream)
+        with progress.stage(2, "Generate test vectors", total=4) as update:
+            update(1)
+            update(4)
+
+        rendered = stream.getvalue()
+        self.assertIn("\r[2/7] Generate test vectors", rendered)
+        self.assertIn("[======================] 100% 4/4", rendered)
+        self.assertIn("done", rendered)
+        self.assertTrue(rendered.endswith("\n"))
 
     def test_fixture_match_tamper_detection_and_failure_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

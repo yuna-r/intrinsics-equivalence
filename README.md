@@ -39,6 +39,10 @@ ioitf check
 {"case_count":48,"record_count":384,"status":"pass"}
 ```
 
+実行中はvectors生成、Intel / OpenPOWER fixture、比較、レポート生成の進捗が表示されます。
+進捗はstderr、最後のJSONはstdoutなので、スクリプトからもそのまま扱えます。
+進捗を消したい場合だけ`ioitf check --quiet`を使います。
+
 `ioitf check`ひとつで、caseの確認、入力生成、両側の実行、答え合わせまで進みます。
 途中の記録は`.ioitf/checks/<timestamp>/`へ残ります。
 
@@ -47,13 +51,17 @@ ioitf check
 ## おまけ：SFレポート
 
 ちょっと楽しいおまけとして、`--showcase-report`を付けると、いつもの成果物に
-近未来SF風のHTMLレポートが加わります。
+近未来SF風のHTMLレポートが加わります。プレビューと同じ高密度runはこの1コマンドです。
 
 ![Showcase report preview](assets/showcase-report-preview.svg)
 
 ```sh
-ioitf check --showcase-report
+ioitf check --profile standard --count-per-case 1000 --showcase-report
 ```
+
+48ケース × 1,000 vectorsで48,000 trials。両経路あわせて96,000 fixture evaluations、
+284,000 lane verdicts、6,144,000 paired bit positionsを照合します。境界値や特殊値を含む
+deterministic streamをどれだけ通したかは、レポートの矩形ロードグラフにも出ます。
 
 実行結果の`showcase_report`が生成したファイルです。
 

@@ -6,7 +6,7 @@ import copy
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Iterator
+from typing import Callable, Iterator
 
 from .canonical import JSONValue, atomic_write, dump_bytes, remove_completion_marker, write_jsonl
 from .cases import CaseDefinition, CaseRegistry, resolve_case_registry
@@ -141,6 +141,14 @@ def _all_records(
             )
 
 
+def _records_with_progress(
+    records: Iterator[dict[str, JSONValue]], progress: Callable[[int], None]
+) -> Iterator[dict[str, JSONValue]]:
+    for count, record in enumerate(records, 1):
+        yield record
+        progress(count)
+
+
 def generate_artifact(
     *,
     cases: str | Path | CaseRegistry,
@@ -149,6 +157,7 @@ def generate_artifact(
     profile: str = "smoke",
     count_per_case: int | None = None,
     seed: str = DEFAULT_SEED,
+    progress: Callable[[int], None] | None = None,
 ) -> GenerateResult:
     registry = resolve_case_registry(cases, isa_registry=isa_registry)
     if profile not in PROFILE_COUNTS:
@@ -172,10 +181,10 @@ def generate_artifact(
     contracts = output_directory / "contracts"
     contracts.mkdir(parents=True, exist_ok=True)
     remove_completion_marker(manifest_path)
-    record_count, byte_length, vectors_sha = write_jsonl(
-        vectors_path,
-        _all_records(registry, count_per_case=count, seed_text=seed),
-    )
+    records = _all_records(registry, count_per_case=count, seed_text=seed)
+    if progress is not None:
+        records = _records_with_progress(records, progress)
+    record_count, byte_length, vectors_sha = write_jsonl(vectors_path, records)
     if record_count != len(registry) * count:
         raise ValidationError("generator did not produce the requested unique inputs")
     case_sha = registry.projected_sha256(set(registry.ids))
