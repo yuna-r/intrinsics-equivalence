@@ -1,6 +1,24 @@
 # intrinsics-equivalence
 
+<p align="center">
+  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-00b8d9?style=for-the-badge">
+  <img alt="IOITF Spec 1.1.0 draft" src="https://img.shields.io/badge/IOITF_SPEC-1.1.0--draft-8a2be2?style=for-the-badge">
+  <img alt="Status: early development" src="https://img.shields.io/badge/status-early_development-ff6f00?style=for-the-badge">
+</p>
+
+<p align="center">
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white">
+  <img alt="C" src="https://img.shields.io/badge/C-native_adapters-a8b9cc?style=flat-square&logo=c&logoColor=black">
+  <img alt="CMake" src="https://img.shields.io/badge/CMake-build-064f8c?style=flat-square&logo=cmake&logoColor=white">
+  <img alt="Intel SSE2" src="https://img.shields.io/badge/Intel-SSE2-0071c5?style=flat-square&logo=intel&logoColor=white">
+  <img alt="OpenPOWER VSX" src="https://img.shields.io/badge/OpenPOWER-VSX-e01f27?style=flat-square&logo=ibm&logoColor=white">
+  <img alt="Canonical JSON RFC 8785" src="https://img.shields.io/badge/JSON-RFC_8785-ffd600?style=flat-square&logo=json&logoColor=black">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square"></a>
+</p>
+
 `IOITF-SPEC-001`（1.1.0-draft）を実装するための初期版です。現段階では、CPUに依存しないコーディネーター部分を先に完成させています。
+
+- Original concept: [@daisukeokaoss](https://github.com/daisukeokaoss)
 
 実装済み:
 
