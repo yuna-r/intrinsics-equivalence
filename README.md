@@ -1,9 +1,11 @@
 # intrinsics-equivalence
 
-![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat&logo=python&logoColor=white)
-![C](https://img.shields.io/badge/C-native-a8b9cc?style=flat&logo=c&logoColor=black)
-![Status](https://img.shields.io/badge/status-early_development-f59e0b?style=flat)
-[![MIT License](https://img.shields.io/badge/license-MIT-2ea44f?style=flat)](LICENSE)
+<p>
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11+-3776ab?style=flat&amp;logo=python&amp;logoColor=white">
+  <img alt="C" src="https://img.shields.io/badge/C-native-a8b9cc?style=flat&amp;logo=c&amp;logoColor=black">
+  <img alt="Status: early development" src="https://img.shields.io/badge/status-early_development-f59e0b?style=flat">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat"></a>
+</p>
 
 **IntelとOpenPOWERに同じ問題を解かせて、答え合わせするツールです。**
 
