@@ -67,24 +67,27 @@ isa_registry = "isa.json"
             loaded.isa_registry, PROJECT / "contracts" / "isa-registry.json"
         )
 
-    def test_official_openpower_examples_cover_every_case(self) -> None:
+    def test_official_native_examples_cover_every_case(self) -> None:
         suite = PROJECT / "10_official_suite"
         case_names = {
             path.name
             for path in (suite / "cases").iterdir()
             if (path / "case.yaml").is_file()
         }
-        sources = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in sorted((suite / "openpower").glob("*.c"))
-        )
-        symbols = set(
-            re.findall(
-                r"\bopenpower_example_([a-z0-9]+_(?:f64x2|i32x4))\s*\(",
-                sources,
-            )
-        )
-        example_names = {symbol.replace("_", "-") for symbol in symbols}
-
         self.assertEqual(len(case_names), 24)
-        self.assertEqual(example_names, case_names)
+
+        for role in ("intel", "openpower"):
+            sources = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in sorted((suite / role).glob("*.c"))
+            )
+            symbols = set(
+                re.findall(
+                    rf"\b{role}_example_([a-z0-9]+_(?:f64x2|i32x4))\s*\(",
+                    sources,
+                )
+            )
+            example_names = {symbol.replace("_", "-") for symbol in symbols}
+
+            with self.subTest(role=role):
+                self.assertEqual(example_names, case_names)

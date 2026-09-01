@@ -30,9 +30,10 @@ Implemented:
   malformed or noncanonical ABI bytes remain `IOITF_CALL_INVALID_ABI`.
 - A Linux ppc64le VSX compatibility implementation boundary with the public symbols
   `power_mm_add_pd`, `power_mm_set1_pd`, and `power_mm_shuffle_epi32`.
-- Reader-facing VSX examples for all 24 official cases under
-  `10_official_suite/openpower/`. On Linux ppc64le the two grouped source files
-  are compiled as the `ioitf_openpower_official_suite` object target.
+- Reader-facing Intel SSE2 and OpenPOWER VSX examples for all 24 official cases
+  under `10_official_suite/`. The paired sources cross-compile to x86-64 and
+  ppc64le ELF objects with LLVM Clang; native builds also compile the matching
+  `ioitf_*_official_suite` object target.
 - A scalar portable adapter and self-test for development hosts such as arm64
   macOS. Its `portable_*` symbols are fixtures and must never be recorded as
   Intel or OpenPOWER evidence.
@@ -47,9 +48,9 @@ Not yet implemented:
 - Symbolic pointer/buffer cases and `encoded_memory_effects`.
 - A native runner, process/signal isolation, dynamic symbol registry, ISA
   detector, MXCSR/FPSCR/VSCR preflight, or build-manifest evidence collector.
-- Cross-compilation and execution verification of the ppc64le translation unit.
-  It is source-complete as an implementation boundary, but only a ppc64le
-  toolchain and host can turn it into conformance evidence.
+- Cross-compilation of the full ppc64le ABI adapter, execution on a ppc64le
+  host, and collection as conformance evidence. The reader-facing official
+  suite already cross-compiles; only execution can turn it into native evidence.
 - General RFC 8785 JSON decoding for arbitrary case signatures.
 
 Build and run on a development host:

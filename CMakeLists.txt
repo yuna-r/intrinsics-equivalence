@@ -85,6 +85,9 @@ if(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
               ${IOITF_COMMON_ADAPTER_SOURCE}
               adapters/intel/sse2_pd.c)
   ioitf_configure_adapter(ioitf_adapter_intel)
+  add_library(ioitf_intel_official_suite OBJECT
+              10_official_suite/intel/f64x2.c
+              10_official_suite/intel/i32x4.c)
   if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM")
     # Keep the complete case build unit within its declared SSE2 requirement.
     target_compile_options(ioitf_adapter_intel PRIVATE
@@ -97,6 +100,19 @@ if(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
       -mno-avx
       -mno-avx2
       -mno-avx512f)
+    target_compile_options(ioitf_intel_official_suite PRIVATE
+      -march=x86-64
+      -msse2
+      -mno-sse3
+      -mno-ssse3
+      -mno-sse4.1
+      -mno-sse4.2
+      -mno-avx
+      -mno-avx2
+      -mno-avx512f
+      -Wall
+      -Wextra
+      -Wpedantic)
   endif()
   set(IOITF_NATIVE_TARGET ioitf_adapter_intel)
   set(IOITF_NATIVE_TEST_DEFINITION IOITF_TEST_INTEL_ADAPTER=1)

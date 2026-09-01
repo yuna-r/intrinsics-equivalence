@@ -3,6 +3,7 @@
 <p>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11+-3776ab?style=flat&amp;logo=python&amp;logoColor=white">
   <img alt="C" src="https://img.shields.io/badge/C-native-a8b9cc?style=flat&amp;logo=c&amp;logoColor=black">
+  <img alt="Clang cross build" src="https://img.shields.io/badge/Clang_cross_build-x86__64_%2B_ppc64le-2ea44f?style=flat&amp;logo=llvm">
   <img alt="Status: early development" src="https://img.shields.io/badge/status-early_development-f59e0b?style=flat">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat"></a>
 </p>
@@ -14,8 +15,8 @@
 
 現在は算術、論理、比較、shift、レーン操作を含む24ケースあります。
 
-> まだ開発初期です。ローカルの比較フローとportable adapterは動きますが、
-> x86_64 / ppc64le実機runnerはこれからです。
+> ローカル比較に加え、Clangによるx86_64 / ppc64le objectのcross buildまで動きます。
+> 未実装なのはppc64le実機での実行と、結果をnative evidenceとして収集するrunnerです。
 
 Original concept: [@daisukeokaoss](https://github.com/daisukeokaoss)
 
@@ -68,7 +69,7 @@ ioitf check --showcase-report
 ## IntelとOpenPOWERを見比べる
 
 Repositoryの一番上に来る[`10_official_suite/`](10_official_suite/)へ、
-24個のcontractと全24操作のOpenPOWER / VSXコードをまとめてあります。
+24個のcontractと、Intel / OpenPOWERそれぞれの全24操作をまとめてあります。
 
 | Intel Intrinsic | OpenPOWER / VSX |
 |---|---|
@@ -76,8 +77,16 @@ Repositoryの一番上に来る[`10_official_suite/`](10_official_suite/)へ、
 | `_mm_set1_pd(x)` | `vec_splats(x)` |
 | `_mm_shuffle_epi32(v, 27)` | `{v[3], v[2], v[1], v[0]}` |
 
-OpenPOWER側は[`10_official_suite/openpower/`](10_official_suite/openpower/)に、
-f64とi32の2つの大きな塊で置いてあります。ABIを含む実用側は`adapters/openpower/`です。
+[`intel/`](10_official_suite/intel/)と[`openpower/`](10_official_suite/openpower/)を
+左右対称にし、どちらもf64とi32の2つの塊で置いてあります。
+
+Clangのcross buildも1コマンドです。
+
+```sh
+./10_official_suite/cross-compile.sh
+```
+
+x86-64 ELFとOpenPOWER ELF V2 ABIのppc64le objectを同時に生成します。
 
 ## ケースをひとつ増やす
 
@@ -288,7 +297,7 @@ Frameworkとテストsuiteは分けてあります。
 
 ```text
 intrinsics-equivalence/
-├── 10_official_suite/     # 24 cases + 全24操作のOpenPOWER例
+├── 10_official_suite/     # 24 cases + Intel/OpenPOWER各24操作
 ├── src/ioitf/             # CLIとartifact処理
 ├── adapters/              # native / portable adapter
 ├── contracts/             # ISA registry
