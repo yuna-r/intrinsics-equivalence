@@ -444,11 +444,12 @@ def _development_check(args: argparse.Namespace) -> int:
     from .artifacts import validate_input_artifact, validate_result_artifact
     from .fixture import run_fixture
 
+    started_at = datetime.now(timezone.utc)
     cases_path, isa_path = _contract_paths(args)
     isa = load_isa_registry(isa_path)
     cases = load_case_definitions(cases_path, isa_registry=isa)
     if args.output is None:
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = started_at.strftime("%Y%m%dT%H%M%S%fZ")
         output = Path(".ioitf") / "checks" / stamp
     else:
         output = args.output
@@ -502,16 +503,31 @@ def _development_check(args: argparse.Namespace) -> int:
 
     summary = read_canonical_json(comparison / "summary.json")
     assert isinstance(summary, dict)
-    _print(
-        {
-            "artifacts": str(output),
-            "case_count": len(cases),
-            "development_fixture": True,
-            "native_evidence": False,
-            "record_count": generated.record_count,
-            "status": summary["outcome"],
-        }
-    )
+    result: dict[str, JSONValue] = {
+        "artifacts": str(output),
+        "case_count": len(cases),
+        "development_fixture": True,
+        "native_evidence": False,
+        "record_count": generated.record_count,
+        "status": summary["outcome"],
+    }
+    if args.showcase_report:
+        from .showcase import write_showcase_report
+
+        showcase = write_showcase_report(
+            output / "showcase.html",
+            cases=cases,
+            summary=summary,
+            profile=args.profile,
+            seed=args.seed,
+            vector_sha256=generated.sha256,
+            case_definitions_sha256=generated.case_definitions_sha256,
+            isa_contract_sha256=generated.used_isa_contract.sha256,
+            generated_at=started_at,
+            native_evidence=False,
+        )
+        result["showcase_report"] = str(showcase)
+    _print(result)
     return exit_code
 
 
@@ -546,6 +562,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     check.add_argument("--count-per-case", type=int, default=8)
     check.add_argument("--seed", default=DEFAULT_SEED)
+    check.add_argument(
+        "--showcase-report",
+        action="store_true",
+        help="write a self-contained presentation-style HTML report",
+    )
     check.set_defaults(handler=_development_check)
 
     validate_cases = subcommands.add_parser("validate-cases")

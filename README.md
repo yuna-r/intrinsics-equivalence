@@ -41,6 +41,28 @@ ioitf check
 
 > ここで動くのはローカル開発用fixtureです。CPU実機で一致した証拠ではありません。
 
+## おまけ：SFレポート
+
+ちょっと楽しいおまけとして、`--showcase-report`を付けると、いつもの成果物に
+近未来SF風のHTMLレポートが加わります。
+
+![Showcase report preview](assets/showcase-report-preview.svg)
+
+```sh
+ioitf check --showcase-report
+```
+
+実行結果の`showcase_report`が生成したファイルです。
+
+```json
+{"showcase_report":".ioitf/checks/.../showcase.html","status":"pass"}
+```
+
+外部画像やWebフォントを使わない1ファイル完結なので、そのままブラウザで開いたり
+共有したりできます。
+
+派手なのは見た目だけで、判定元はこれまでどおりcanonical JSON成果物です。
+
 ## ケースをひとつ増やす
 
 似ているケースをコピーします。

@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title description">
+  <title id="title">IOITF showcase report preview</title>
+  <desc id="description">A dark science-fiction styled equivalence report showing a 100 percent coherence result across Intel and OpenPOWER paths.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#02040a"/>
+      <stop offset="0.55" stop-color="#091126"/>
+      <stop offset="1" stop-color="#03050b"/>
+    </linearGradient>
+    <radialGradient id="blue-glow" cx="78%" cy="12%" r="53%">
+      <stop offset="0" stop-color="#6685ff" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#6685ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="violet-glow" cx="6%" cy="42%" r="45%">
+      <stop offset="0" stop-color="#bc7cff" stop-opacity="0.17"/>
+      <stop offset="1" stop-color="#bc7cff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6685ff"/>
+      <stop offset="0.5" stop-color="#7cf7ff"/>
+      <stop offset="1" stop-color="#bc7cff"/>
+    </linearGradient>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#7cf7ff" stroke-opacity="0.055"/>
+    </pattern>
+    <filter id="cyan-shadow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+    <clipPath id="window"><rect x="40" y="40" width="1360" height="820" rx="7"/></clipPath>
+  </defs>
+
+  <rect width="1440" height="900" fill="#02040a"/>
+  <g filter="url(#soft-shadow)">
+    <rect x="40" y="40" width="1360" height="820" rx="7" fill="url(#background)" stroke="#7cf7ff" stroke-opacity="0.24"/>
+  </g>
+  <g clip-path="url(#window)">
+    <rect x="40" y="40" width="1360" height="820" fill="url(#blue-glow)"/>
+    <rect x="40" y="40" width="1360" height="820" fill="url(#violet-glow)"/>
+    <rect x="40" y="40" width="1360" height="820" fill="url(#grid)"/>
+
+    <rect x="40" y="40" width="1360" height="48" fill="#040810" fill-opacity="0.92"/>
+    <path d="M40 88H1400" stroke="#7cf7ff" stroke-opacity="0.36"/>
+    <circle cx="66" cy="64" r="4" fill="#7cf7ff" filter="url(#cyan-shadow)"/>
+    <circle cx="82" cy="64" r="4" fill="#bc7cff"/>
+    <circle cx="98" cy="64" r="4" fill="#ffcb6b"/>
+    <text x="122" y="69" fill="#8296aa" font-family="monospace" font-size="11" letter-spacing="2.4">IOITF // CROSS-ARCHITECTURE OBSERVATORY</text>
+    <text x="1368" y="69" text-anchor="end" fill="#53697d" font-family="monospace" font-size="10" letter-spacing="1.5">REPORT 77C0BA3A312E // UTC</text>
+
+    <text x="102" y="159" fill="#7cf7ff" font-family="monospace" font-size="11" letter-spacing="4">—  OPERATION NIGHTGLASS</text>
+    <text x="100" y="246" fill="#edfaff" font-family="Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="-5">INTRINSIC</text>
+    <text x="100" y="323" fill="none" stroke="#edfaff" stroke-opacity="0.72" font-family="Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="-5">EQUIVALENCE</text>
+    <text x="102" y="369" fill="#a7bacb" font-family="Arial, sans-serif" font-size="16" letter-spacing="1">A deterministic signal crossed two architectures.</text>
+    <text x="102" y="394" fill="#a7bacb" font-family="Arial, sans-serif" font-size="16" letter-spacing="1">Every observable bit returned to the same coordinate.</text>
+    <circle cx="108" cy="439" r="5" fill="#73ffd2" filter="url(#cyan-shadow)"/>
+    <text x="126" y="444" fill="#73ffd2" font-family="monospace" font-size="12" letter-spacing="2.5">COHERENCE CONFIRMED // PASS</text>
+
+    <g transform="translate(1110 279)">
+      <circle r="154" fill="none" stroke="#7cf7ff" stroke-opacity="0.38"/>
+      <circle r="119" fill="none" stroke="#7cf7ff" stroke-opacity="0.45" stroke-dasharray="7 8"/>
+      <circle r="81" fill="none" stroke="#bc7cff" stroke-opacity="0.7"/>
+      <circle r="49" fill="#07101c" stroke="#7cf7ff" filter="url(#cyan-shadow)"/>
+      <circle cy="-154" r="5" fill="#7cf7ff" filter="url(#cyan-shadow)"/>
+      <circle cx="84" cy="-84" r="4" fill="#7cf7ff"/>
+      <circle cx="-56" cy="-58" r="4" fill="#bc7cff"/>
+      <g>
+        <text y="-3" text-anchor="middle" fill="#edfaff" font-family="Arial, sans-serif" font-size="25" font-weight="700">100%</text>
+        <text y="15" text-anchor="middle" fill="#7cf7ff" font-family="monospace" font-size="7" letter-spacing="2">COHERENCE</text>
+      </g>
+    </g>
+
+    <g transform="translate(40 496)">
+      <rect width="1360" height="112" fill="#060a14" fill-opacity="0.86" stroke="#7cf7ff" stroke-opacity="0.18"/>
+      <path d="M340 0V112M680 0V112M1020 0V112" stroke="#7cf7ff" stroke-opacity="0.16"/>
+      <g font-family="Arial, sans-serif">
+        <text x="78" y="54" fill="#edfaff" font-size="39" font-weight="700">6</text>
+        <text x="78" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">INTRINSIC CASES</text>
+        <text x="418" y="54" fill="#edfaff" font-size="39" font-weight="700">120</text>
+        <text x="418" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">SIGNALS TRANSMITTED</text>
+        <text x="758" y="54" fill="#edfaff" font-size="39" font-weight="700">120</text>
+        <text x="758" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">SIGNALS ALIGNED</text>
+        <text x="1098" y="54" fill="#edfaff" font-size="39" font-weight="700">0</text>
+        <text x="1098" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">ANOMALIES OBSERVED</text>
+      </g>
+    </g>
+
+    <text x="100" y="665" fill="#bc7cff" font-family="monospace" font-size="9" letter-spacing="3">TRANSMISSION TOPOLOGY</text>
+    <text x="100" y="707" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">DUAL-PATH VERIFICATION</text>
+
+    <g transform="translate(100 744)">
+      <rect width="760" height="86" fill="#090e1c" fill-opacity="0.82" stroke="#7cf7ff" stroke-opacity="0.2"/>
+      <rect x="26" y="20" width="255" height="48" fill="#040810" stroke="#7cf7ff" stroke-opacity="0.2"/>
+      <text x="44" y="43" fill="#edfaff" font-family="Arial, sans-serif" font-size="19" font-weight="700">INTEL</text>
+      <text x="44" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">x86_64 // SSE2 PATH</text>
+      <path d="M301 44H459" stroke="url(#beam)" stroke-width="2" filter="url(#cyan-shadow)"/>
+      <circle cx="380" cy="44" r="16" fill="#08101b" stroke="#7cf7ff"/>
+      <text x="380" y="49" text-anchor="middle" fill="#7cf7ff" font-family="monospace" font-size="15">≡</text>
+      <rect x="479" y="20" width="255" height="48" fill="#040810" stroke="#7cf7ff" stroke-opacity="0.2"/>
+      <text x="497" y="43" fill="#edfaff" font-family="Arial, sans-serif" font-size="19" font-weight="700">OPENPOWER</text>
+      <text x="497" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">ppc64le // VSX PATH</text>
+    </g>
+
+    <g transform="translate(882 744)">
+      <rect width="458" height="86" fill="#090e1c" fill-opacity="0.82" stroke="#7cf7ff" stroke-opacity="0.2"/>
+      <text x="22" y="25" fill="#7cf7ff" font-family="monospace" font-size="8" letter-spacing="2">INTEGRITY MATRIX</text>
+      <text x="22" y="52" fill="#9cb0c2" font-family="monospace" font-size="10">CASE CONTRACTS</text>
+      <text x="432" y="52" text-anchor="end" fill="#73ffd2" font-family="monospace" font-size="10">LOCKED</text>
+      <text x="22" y="71" fill="#9cb0c2" font-family="monospace" font-size="10">VECTOR STREAM</text>
+      <text x="432" y="71" text-anchor="end" fill="#73ffd2" font-family="monospace" font-size="10">DETERMINISTIC</text>
+    </g>
+
+    <path d="M40 852H1400" stroke="#7cf7ff" stroke-opacity="0.2"/>
+    <text x="65" y="848" fill="#53697d" font-family="monospace" font-size="7" letter-spacing="1.4">SELF-CONTAINED HTML // RESPONSIVE // NON-NORMATIVE SHOWCASE VIEW</text>
+  </g>
+</svg>

@@ -51,6 +51,7 @@ class EndToEndTests(unittest.TestCase):
                         "--project", str(PROJECT / "ioitf.toml"),
                         "--output", str(output),
                         "--count-per-case", "2",
+                        "--showcase-report",
                     ]
                 )
             self.assertEqual(exit_code, 0)
@@ -60,6 +61,11 @@ class EndToEndTests(unittest.TestCase):
             self.assertFalse(result["native_evidence"])
             self.assertEqual(result["record_count"], 12)
             self.assertTrue((output / "comparison" / "summary.json").is_file())
+            self.assertEqual(result["showcase_report"], str(output / "showcase.html"))
+            showcase = (output / "showcase.html").read_text(encoding="utf-8")
+            self.assertIn("COHERENCE CONFIRMED", showcase)
+            self.assertIn("sse2.shuffle.i32x4.imm8", showcase)
+            self.assertIn("DEVELOPMENT SIMULATION", showcase)
 
     def test_fixture_match_tamper_detection_and_failure_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
