@@ -154,3 +154,71 @@ f64x2 power_cmpnge_f64x2(f64x2 a, f64x2 b)
 {
     return (f64x2)(u64x2){mask(!(a[0] >= b[0])), mask(!(a[1] >= b[1]))};
 }
+
+static int nan_bits(unsigned long long bits)
+{
+    return (bits & 0x7ff0000000000000ULL) == 0x7ff0000000000000ULL &&
+           (bits & 0x000fffffffffffffULL) != 0;
+}
+
+static unsigned long long minmax_bits(double a, double b,
+                                      unsigned long long a_bits,
+                                      unsigned long long b_bits,
+                                      int select_min)
+{
+    if (nan_bits(a_bits) || nan_bits(b_bits) || a == b) {
+        return b_bits;
+    }
+    if ((select_min && a < b) || (!select_min && a > b)) {
+        return a_bits;
+    }
+    return b_bits;
+}
+
+f64x2 power_min_f64x2(f64x2 a, f64x2 b)
+{
+    u64x2 a_bits = (u64x2)a;
+    u64x2 b_bits = (u64x2)b;
+    return (f64x2)(u64x2){
+        minmax_bits(a[0], b[0], a_bits[0], b_bits[0], 1),
+        minmax_bits(a[1], b[1], a_bits[1], b_bits[1], 1)};
+}
+
+f64x2 power_max_f64x2(f64x2 a, f64x2 b)
+{
+    u64x2 a_bits = (u64x2)a;
+    u64x2 b_bits = (u64x2)b;
+    return (f64x2)(u64x2){
+        minmax_bits(a[0], b[0], a_bits[0], b_bits[0], 0),
+        minmax_bits(a[1], b[1], a_bits[1], b_bits[1], 0)};
+}
+
+int power_comieq_f64x2(f64x2 a, f64x2 b)
+{
+    return ordered(a[0], b[0]) && a[0] == b[0];
+}
+
+int power_comilt_f64x2(f64x2 a, f64x2 b)
+{
+    return ordered(a[0], b[0]) && a[0] < b[0];
+}
+
+int power_comile_f64x2(f64x2 a, f64x2 b)
+{
+    return ordered(a[0], b[0]) && a[0] <= b[0];
+}
+
+int power_comigt_f64x2(f64x2 a, f64x2 b)
+{
+    return ordered(a[0], b[0]) && a[0] > b[0];
+}
+
+int power_comige_f64x2(f64x2 a, f64x2 b)
+{
+    return ordered(a[0], b[0]) && a[0] >= b[0];
+}
+
+int power_comineq_f64x2(f64x2 a, f64x2 b)
+{
+    return !ordered(a[0], b[0]) || a[0] != b[0];
+}

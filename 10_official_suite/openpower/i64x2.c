@@ -53,3 +53,31 @@ i64x2 power_set1_i64x2(long long value)
 {
     return vec_splats(value);
 }
+
+i64x2 power_sll_i64x2(i64x2 a, u64x2 count)
+{
+    unsigned long long n = count[0];
+    if (n > 63U) {
+        return (i64x2)vec_splats(0ULL);
+    }
+    return (i64x2)vec_sl((u64x2)a, vec_splats(n));
+}
+
+i64x2 power_srl_i64x2(i64x2 a, u64x2 count)
+{
+    unsigned long long n = count[0];
+    if (n > 63U) {
+        return (i64x2)vec_splats(0ULL);
+    }
+    return (i64x2)vec_sr((u64x2)a, vec_splats(n));
+}
+
+long long power_cvtsi128_i64x2(i64x2 a)
+{
+    return a[0];
+}
+
+i64x2 power_set_i64x2(long long high, long long low)
+{
+    return (i64x2){low, high};
+}

@@ -102,3 +102,23 @@ int intel_movemask_i8x16(i8x16 v)
 {
     return _mm_movemask_epi8(v);
 }
+
+i8x16 intel_cmplt_i8x16(i8x16 a, i8x16 b)
+{
+    return _mm_cmplt_epi8(a, b);
+}
+
+i8x16 intel_set_i8x16(signed char lane15, signed char lane14,
+                       signed char lane13, signed char lane12,
+                       signed char lane11, signed char lane10,
+                       signed char lane9, signed char lane8,
+                       signed char lane7, signed char lane6,
+                       signed char lane5, signed char lane4,
+                       signed char lane3, signed char lane2,
+                       signed char lane1, signed char lane0)
+{
+    return _mm_set_epi8(lane15, lane14, lane13, lane12,
+                        lane11, lane10, lane9, lane8,
+                        lane7, lane6, lane5, lane4,
+                        lane3, lane2, lane1, lane0);
+}

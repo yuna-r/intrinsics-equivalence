@@ -103,3 +103,48 @@ i32x4 power_set1_i32x4(int value)
 {
     return vec_splats(value);
 }
+
+u32x4 power_sll_i32x4(u32x4 a, u64x2 count)
+{
+    unsigned long long n = count[0];
+    if (n > 31U) {
+        return vec_splats(0U);
+    }
+    return vec_sl(a, vec_splats((unsigned)n));
+}
+
+u32x4 power_srl_i32x4(u32x4 a, u64x2 count)
+{
+    unsigned long long n = count[0];
+    if (n > 31U) {
+        return vec_splats(0U);
+    }
+    return vec_sr(a, vec_splats((unsigned)n));
+}
+
+u32x4 power_sra_i32x4(u32x4 a, u64x2 count)
+{
+    unsigned long long raw = count[0];
+    unsigned n = (unsigned)(raw > 31U ? 31U : raw);
+    return (u32x4)vec_sra((i32x4)a, vec_splats(n));
+}
+
+u32x4 power_cmplt_i32x4(u32x4 a, u32x4 b)
+{
+    return (u32x4)vec_cmpgt((i32x4)b, (i32x4)a);
+}
+
+int power_cvtsi128_i32x4(i32x4 a)
+{
+    return a[0];
+}
+
+i32x4 power_set_i32x4(int lane3, int lane2, int lane1, int lane0)
+{
+    return (i32x4){lane0, lane1, lane2, lane3};
+}
+
+i32x4 power_setr_i32x4(int lane0, int lane1, int lane2, int lane3)
+{
+    return (i32x4){lane0, lane1, lane2, lane3};
+}

@@ -53,7 +53,11 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.andnot.i32x4.default",
                 "sse2.avg.u16x8.default",
                 "sse2.avg.u8x16.default",
+                "sse2.cast.f32x4.f64x2",
+                "sse2.cast.f32x4.i32x4",
+                "sse2.cast.f64x2.f32x4",
                 "sse2.cast.f64x2.i64x2",
+                "sse2.cast.i32x4.f32x4",
                 "sse2.cast.i64x2.f64x2",
                 "sse2.cmpeq.f64x2.default",
                 "sse2.cmpeq.i16x8.default",
@@ -66,6 +70,9 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.cmpgt.i8x16.default",
                 "sse2.cmple.f64x2.default",
                 "sse2.cmplt.f64x2.default",
+                "sse2.cmplt.i16x8.default",
+                "sse2.cmplt.i32x4.default",
+                "sse2.cmplt.i8x16.default",
                 "sse2.cmpneq.f64x2.default",
                 "sse2.cmpnge.f64x2.default",
                 "sse2.cmpngt.f64x2.default",
@@ -73,11 +80,23 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.cmpnlt.f64x2.default",
                 "sse2.cmpord.f64x2.default",
                 "sse2.cmpunord.f64x2.default",
+                "sse2.comieq.f64x2.scalar",
+                "sse2.comige.f64x2.scalar",
+                "sse2.comigt.f64x2.scalar",
+                "sse2.comile.f64x2.scalar",
+                "sse2.comilt.f64x2.scalar",
+                "sse2.comineq.f64x2.scalar",
+                "sse2.cvtsi128.i32x4.low",
+                "sse2.cvtsi128.i64x2.low",
                 "sse2.cvtsi32.i32x4.default",
                 "sse2.cvtsi64.i64x2.default",
+                "sse2.extract.i16x8.imm8",
+                "sse2.insert.i16x8.imm8",
                 "sse2.madd.i16x8.default",
+                "sse2.max.f64x2.default",
                 "sse2.max.i16x8.default",
                 "sse2.max.u8x16.default",
+                "sse2.min.f64x2.default",
                 "sse2.min.i16x8.default",
                 "sse2.min.u8x16.default",
                 "sse2.move.f64x2.default",
@@ -96,19 +115,32 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.packus.i16x8.default",
                 "sse2.sad.u8x16.default",
                 "sse2.set.f64x2.high-low",
+                "sse2.set.i16x8.high-low",
+                "sse2.set.i32x4.high-low",
+                "sse2.set.i64x2.high-low",
+                "sse2.set.i8x16.high-low",
                 "sse2.set1.f64x2.default",
                 "sse2.set1.i32x4.default",
                 "sse2.set1.i64x2.default",
+                "sse2.setr.i32x4.low-high",
                 "sse2.shuffle.f64x2.imm8",
                 "sse2.shuffle.i32x4.imm8",
                 "sse2.shufflehi.i16x8.imm8",
                 "sse2.shufflelo.i16x8.imm8",
+                "sse2.sll.i16x8.vector-count",
+                "sse2.sll.i32x4.vector-count",
+                "sse2.sll.i64x2.vector-count",
                 "sse2.slli-bytes.u8x16.imm8",
                 "sse2.slli.i16x8.imm8",
                 "sse2.slli.i32x4.imm8",
                 "sse2.slli.i64x2.imm8",
+                "sse2.sra.i16x8.vector-count",
+                "sse2.sra.i32x4.vector-count",
                 "sse2.srai.i16x8.imm8",
                 "sse2.srai.i32x4.imm8",
+                "sse2.srl.i16x8.vector-count",
+                "sse2.srl.i32x4.vector-count",
+                "sse2.srl.i64x2.vector-count",
                 "sse2.srli-bytes.u8x16.imm8",
                 "sse2.srli.i16x8.imm8",
                 "sse2.srli.i32x4.imm8",
@@ -240,7 +272,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 480)
+            self.assertEqual(first.record_count, 640)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -584,6 +616,154 @@ class CaseAndGeneratorTests(unittest.TestCase):
             with self.subTest(case_id=case_id):
                 actual = load_development_case(self.cases.get(case_id)).execute(record)
                 self.assertEqual(actual, {"return": {"element": "f64", "lanes": lanes}})
+
+    def test_128_case_expansion_has_independent_known_results(self) -> None:
+        def execute(
+            case_id: str,
+            operands: dict[str, object],
+            immediates: dict[str, object] | None = None,
+        ) -> dict[str, object]:
+            record: dict[str, object] = {"operands": operands}
+            if immediates is not None:
+                record["immediates"] = immediates
+            return load_development_case(self.cases.get(case_id)).execute(record)  # type: ignore[arg-type,return-value]
+
+        shift_specs = (
+            ("i16", 8, "0001", "8000", "0002", "0000", "4000", "c000"),
+            ("i32", 4, "00000001", "80000000", "00000002", "00000000", "40000000", "c0000000"),
+            ("i64", 2, "0000000000000001", "8000000000000000", "0000000000000002", "0000000000000000", "4000000000000000", None),
+        )
+        for element, lanes, one, sign, left_one, left_sign, right_sign, arithmetic_sign in shift_specs:
+            source = [f"0x{one}", f"0x{sign}"] + [f"0x{one}"] * (lanes - 2)
+            operands = {
+                "a": {"element": element, "lanes": source},
+                "count": {
+                    "element": "u64",
+                    "lanes": ["0x0000000000000001", "0xffffffffffffffff"],
+                },
+            }
+            expected = {
+                "sll": [f"0x{left_one}", f"0x{left_sign}"] + [f"0x{left_one}"] * (lanes - 2),
+                "srl": [f"0x{'0' * len(one)}", f"0x{right_sign}"] + [f"0x{'0' * len(one)}"] * (lanes - 2),
+            }
+            if arithmetic_sign is not None:
+                expected["sra"] = [f"0x{'0' * len(one)}", f"0x{arithmetic_sign}"] + [f"0x{'0' * len(one)}"] * (lanes - 2)
+            for operation, output in expected.items():
+                with self.subTest(case=f"{operation}-{element}"):
+                    self.assertEqual(
+                        execute(f"sse2.{operation}.{element}x{lanes}.vector-count", operands),
+                        {"return": {"element": element, "lanes": output}},
+                    )
+
+        for element, lanes, width in (("i8", 16, 8), ("i16", 8, 16), ("i32", 4, 32)):
+            mask = (1 << width) - 1
+            sign = 1 << (width - 1)
+            a_values = tuple((0, mask, sign - 1, sign) * (lanes // 4))
+            b_values = tuple((mask, 0, 0, sign) * (lanes // 4))
+            expected = tuple((0, mask, 0, 0) * (lanes // 4))
+            self.assertEqual(
+                execute(
+                    f"sse2.cmplt.{element}x{lanes}.default",
+                    {"a": vector(element, a_values), "b": vector(element, b_values)},
+                ),
+                {"return": vector(element, expected)},
+            )
+
+        self.assertEqual(
+            execute(
+                "sse2.cvtsi128.i32x4.low",
+                {"a": vector("i32", (0x89ABCDEF, 1, 2, 3))},
+            ),
+            {"return": scalar("i32", 0x89ABCDEF)},
+        )
+        self.assertEqual(
+            execute(
+                "sse2.cvtsi128.i64x2.low",
+                {"a": vector("i64", (0x0123456789ABCDEF, 0xFEDCBA9876543210))},
+            ),
+            {"return": scalar("i64", 0x0123456789ABCDEF)},
+        )
+
+        for element, lanes in (("i8", 16), ("i16", 8), ("i32", 4), ("i64", 2)):
+            arguments = {
+                f"lane{lane}": scalar(element, lane + 1) for lane in reversed(range(lanes))
+            }
+            self.assertEqual(
+                execute(f"sse2.set.{element}x{lanes}.high-low", arguments),
+                {"return": vector(element, tuple(range(1, lanes + 1)))},
+            )
+        setr_operands = {f"lane{lane}": scalar("i32", lane + 10) for lane in range(4)}
+        self.assertEqual(
+            execute("sse2.setr.i32x4.low-high", setr_operands),
+            {"return": vector("i32", (10, 11, 12, 13))},
+        )
+
+        i16_source = vector("i16", (0x1000, 0x2111, 0x3222, 0x4333, 0x5444, 0x6555, 0x7666, 0x8777))
+        self.assertEqual(
+            execute("sse2.extract.i16x8.imm8", {"a": i16_source}, {"imm8": 5}),
+            {"return": scalar("u32", 0x6555)},
+        )
+        self.assertEqual(
+            execute(
+                "sse2.insert.i16x8.imm8",
+                {"a": i16_source, "value": scalar("i32", 0xDEADBEEF)},
+                {"imm8": 2},
+            ),
+            {"return": vector("i16", (0x1000, 0x2111, 0xBEEF, 0x4333, 0x5444, 0x6555, 0x7666, 0x8777))},
+        )
+
+        f64_bits = vector("f64", (0x0123456789ABCDEF, 0xFEDCBA9876543210))
+        f32_bits = vector("f32", (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98))
+        self.assertEqual(
+            execute("sse2.cast.f64x2.f32x4", {"a": f64_bits}),
+            {"return": f32_bits},
+        )
+        self.assertEqual(
+            execute("sse2.cast.f32x4.f64x2", {"a": f32_bits}),
+            {"return": f64_bits},
+        )
+        self.assertEqual(
+            execute("sse2.cast.f32x4.i32x4", {"a": f32_bits}),
+            {"return": vector("i32", (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98))},
+        )
+        self.assertEqual(
+            execute(
+                "sse2.cast.i32x4.f32x4",
+                {"a": vector("i32", (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98))},
+            ),
+            {"return": f32_bits},
+        )
+
+        float_operands = {
+            "a": vector("f64", (0x3FF0000000000000, 0x7FF8000000000042)),
+            "b": vector("f64", (0x4000000000000000, 0xBFF0000000000000)),
+        }
+        self.assertEqual(
+            execute("sse2.min.f64x2.default", float_operands),
+            {"return": vector("f64", (0x3FF0000000000000, 0xBFF0000000000000))},
+        )
+        self.assertEqual(
+            execute("sse2.max.f64x2.default", float_operands),
+            {"return": vector("f64", (0x4000000000000000, 0xBFF0000000000000))},
+        )
+
+        unordered = {
+            "a": vector("f64", (0x7FF8000000000042, 0)),
+            "b": vector("f64", (0x3FF0000000000000, 0)),
+        }
+        for operation, expected in {
+            "comieq": 0,
+            "comilt": 0,
+            "comile": 0,
+            "comigt": 0,
+            "comige": 0,
+            "comineq": 1,
+        }.items():
+            with self.subTest(case=operation, unordered=True):
+                self.assertEqual(
+                    execute(f"sse2.{operation}.f64x2.scalar", unordered),
+                    {"return": scalar("i32", expected)},
+                )
 
     def test_f64_comparison_models_cover_ordered_unordered_and_signed_zero(self) -> None:
         true = "0xffffffffffffffff"

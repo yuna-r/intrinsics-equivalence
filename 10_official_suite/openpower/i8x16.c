@@ -144,3 +144,23 @@ int power_movemask_i8x16(u8x16 v)
     }
     return (int)result;
 }
+
+u8x16 power_cmplt_i8x16(u8x16 a, u8x16 b)
+{
+    return (u8x16)vec_cmpgt((i8x16)b, (i8x16)a);
+}
+
+i8x16 power_set_i8x16(signed char lane15, signed char lane14,
+                       signed char lane13, signed char lane12,
+                       signed char lane11, signed char lane10,
+                       signed char lane9, signed char lane8,
+                       signed char lane7, signed char lane6,
+                       signed char lane5, signed char lane4,
+                       signed char lane3, signed char lane2,
+                       signed char lane1, signed char lane0)
+{
+    return (i8x16){lane0, lane1, lane2, lane3,
+                    lane4, lane5, lane6, lane7,
+                    lane8, lane9, lane10, lane11,
+                    lane12, lane13, lane14, lane15};
+}

@@ -121,3 +121,38 @@ i32x4 intel_set1_i32x4(int value)
 {
     return _mm_set1_epi32(value);
 }
+
+i32x4 intel_sll_i32x4(i32x4 a, __m128i count)
+{
+    return _mm_sll_epi32(a, count);
+}
+
+i32x4 intel_srl_i32x4(i32x4 a, __m128i count)
+{
+    return _mm_srl_epi32(a, count);
+}
+
+i32x4 intel_sra_i32x4(i32x4 a, __m128i count)
+{
+    return _mm_sra_epi32(a, count);
+}
+
+i32x4 intel_cmplt_i32x4(i32x4 a, i32x4 b)
+{
+    return _mm_cmplt_epi32(a, b);
+}
+
+int intel_cvtsi128_i32x4(i32x4 a)
+{
+    return _mm_cvtsi128_si32(a);
+}
+
+i32x4 intel_set_i32x4(int lane3, int lane2, int lane1, int lane0)
+{
+    return _mm_set_epi32(lane3, lane2, lane1, lane0);
+}
+
+i32x4 intel_setr_i32x4(int lane0, int lane1, int lane2, int lane3)
+{
+    return _mm_setr_epi32(lane0, lane1, lane2, lane3);
+}

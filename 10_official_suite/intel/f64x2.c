@@ -147,3 +147,43 @@ f64x2 intel_cmpnge_f64x2(f64x2 a, f64x2 b)
 {
     return _mm_cmpnge_pd(a, b);
 }
+
+f64x2 intel_min_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_min_pd(a, b);
+}
+
+f64x2 intel_max_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_max_pd(a, b);
+}
+
+int intel_comieq_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_comieq_sd(a, b);
+}
+
+int intel_comilt_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_comilt_sd(a, b);
+}
+
+int intel_comile_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_comile_sd(a, b);
+}
+
+int intel_comigt_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_comigt_sd(a, b);
+}
+
+int intel_comige_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_comige_sd(a, b);
+}
+
+int intel_comineq_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_comineq_sd(a, b);
+}

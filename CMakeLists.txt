@@ -86,6 +86,7 @@ if(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
               adapters/intel/sse2_pd.c)
   ioitf_configure_adapter(ioitf_adapter_intel)
   add_library(ioitf_intel_official_suite OBJECT
+              10_official_suite/intel/f32x4.c
               10_official_suite/intel/f64x2.c
               10_official_suite/intel/i8x16.c
               10_official_suite/intel/i16x8.c
@@ -132,6 +133,7 @@ elseif(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
   target_include_directories(ioitf_adapter_openpower
                              PRIVATE adapters/openpower)
   add_library(ioitf_openpower_official_suite OBJECT
+              10_official_suite/openpower/f32x4.c
               10_official_suite/openpower/f64x2.c
               10_official_suite/openpower/i8x16.c
               10_official_suite/openpower/i16x8.c

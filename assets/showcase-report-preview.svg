@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1772" viewBox="0 0 1440 1772" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1852" viewBox="0 0 1440 1852" role="img" aria-labelledby="title description">
   <title id="title">IOITF showcase report preview</title>
-  <desc id="description">A dark science-fiction styled development-simulation report showing 96 bit-exact cases, 96,000 trials, and 100 percent coherence across Intel and OpenPOWER semantics.</desc>
+  <desc id="description">A dark science-fiction styled development-simulation report showing 128 bit-exact cases, 128,000 trials, and 100 percent coherence across Intel and OpenPOWER semantics.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#02040a"/>
@@ -45,17 +45,17 @@
       <rect x="0.5" y="0.5" width="83" height="31" fill="currentColor" fill-opacity="0.78" stroke="#ecfbff" stroke-opacity="0.36"/>
       <rect x="6" y="7" width="72" height="3" fill="#ffffff" fill-opacity="0.34"/>
     </symbol>
-    <clipPath id="window"><rect x="40" y="40" width="1360" height="1692" rx="7"/></clipPath>
+    <clipPath id="window"><rect x="40" y="40" width="1360" height="1772" rx="7"/></clipPath>
   </defs>
 
-  <rect width="1440" height="1772" fill="#02040a"/>
+  <rect width="1440" height="1852" fill="#02040a"/>
   <g filter="url(#soft-shadow)">
-    <rect x="40" y="40" width="1360" height="1692" rx="7" fill="url(#background)" stroke="#7cf7ff" stroke-opacity="0.24"/>
+    <rect x="40" y="40" width="1360" height="1772" rx="7" fill="url(#background)" stroke="#7cf7ff" stroke-opacity="0.24"/>
   </g>
   <g clip-path="url(#window)">
-    <rect x="40" y="40" width="1360" height="1692" fill="url(#blue-glow)"/>
-    <rect x="40" y="40" width="1360" height="1692" fill="url(#violet-glow)"/>
-    <rect x="40" y="40" width="1360" height="1692" fill="url(#grid)"/>
+    <rect x="40" y="40" width="1360" height="1772" fill="url(#blue-glow)"/>
+    <rect x="40" y="40" width="1360" height="1772" fill="url(#violet-glow)"/>
+    <rect x="40" y="40" width="1360" height="1772" fill="url(#grid)"/>
 
     <rect x="40" y="40" width="1360" height="48" fill="#040810" fill-opacity="0.92"/>
     <path d="M40 88H1400" stroke="#7cf7ff" stroke-opacity="0.36"/>
@@ -91,11 +91,11 @@
       <rect width="1360" height="112" fill="#060a14" fill-opacity="0.86" stroke="#7cf7ff" stroke-opacity="0.18"/>
       <path d="M340 0V112M680 0V112M1020 0V112" stroke="#7cf7ff" stroke-opacity="0.16"/>
       <g font-family="Arial, sans-serif">
-        <text x="78" y="54" fill="#edfaff" font-size="39" font-weight="700">96</text>
+        <text x="78" y="54" fill="#edfaff" font-size="39" font-weight="700">128</text>
         <text x="78" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">INTRINSIC CASES</text>
-        <text x="418" y="54" fill="#edfaff" font-size="39" font-weight="700">96,000</text>
+        <text x="418" y="54" fill="#edfaff" font-size="39" font-weight="700">128,000</text>
         <text x="418" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">TRIALS COMPLETED</text>
-        <text x="758" y="54" fill="#edfaff" font-size="39" font-weight="700">96,000</text>
+        <text x="758" y="54" fill="#edfaff" font-size="39" font-weight="700">128,000</text>
         <text x="758" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">RESULTS ALIGNED</text>
         <text x="1098" y="54" fill="#edfaff" font-size="39" font-weight="700">0</text>
         <text x="1098" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">DIVERGENCES</text>
@@ -105,15 +105,15 @@
     <text x="100" y="669" fill="#ffbd4a" font-family="monospace" font-size="9" letter-spacing="3">TEST LOAD SPECTRUM // STANDARD PROFILE</text>
     <text x="1340" y="665" text-anchor="end" fill="#7cf7ff" font-family="monospace" font-size="12" letter-spacing="2">DEVELOPMENT SIMULATION</text>
     <text x="1340" y="683" text-anchor="end" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">STANDARD PROFILE // 1,000 VECTORS PER CASE</text>
-    <text x="100" y="712" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">96,000 TRIALS. EVERY CASE ALIGNED.</text>
+    <text x="100" y="712" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">128,000 TRIALS. EVERY CASE ALIGNED.</text>
     <text x="102" y="742" fill="#91a7b9" font-family="Arial, sans-serif" font-size="13" letter-spacing="0.8">One thousand deterministic vectors challenged each intrinsic contract; both semantic fixtures answered every trial.</text>
 
     <g transform="translate(100 770)">
-      <rect width="1240" height="680" fill="url(#load-panel)" stroke="#a7efff" stroke-opacity="0.48"/>
-      <rect x="1" y="1" width="1238" height="678" fill="#6d8dff" fill-opacity="0.045"/>
-      <path d="M902 0V680" stroke="#d7eaff" stroke-opacity="0.32"/>
+      <rect width="1240" height="760" fill="url(#load-panel)" stroke="#a7efff" stroke-opacity="0.48"/>
+      <rect x="1" y="1" width="1238" height="758" fill="#6d8dff" fill-opacity="0.045"/>
+      <path d="M902 0V760" stroke="#d7eaff" stroke-opacity="0.32"/>
 
-      <text x="26" y="35" fill="#ecfbff" font-family="monospace" font-size="10" letter-spacing="2.2">96 BIT-EXACT CASES</text>
+      <text x="26" y="35" fill="#ecfbff" font-family="monospace" font-size="10" letter-spacing="2.2">128 BIT-EXACT CASES</text>
       <text x="850" y="35" text-anchor="end" fill="#9fffd2" font-family="monospace" font-size="9" letter-spacing="1.6">1,000 VECTORS PER CASE</text>
 
       <g id="case-grid-half" transform="translate(28 55)">
@@ -126,16 +126,23 @@
       </g>
       <use href="#case-grid-half" transform="translate(0 252)"/>
 
-      <path d="M26 573H876" stroke="#eef8ff" stroke-opacity="0.28"/>
+      <g transform="translate(28 559)">
+        <use href="#case-tile" color="#5eeaff" x="0" y="0" width="84" height="32"/><use href="#case-tile" color="#57e8cf" x="94" y="0" width="84" height="32"/><use href="#case-tile" color="#65ed9a" x="188" y="0" width="84" height="32"/><use href="#case-tile" color="#9eef79" x="282" y="0" width="84" height="32"/><use href="#case-tile" color="#d8ee64" x="376" y="0" width="84" height="32"/><use href="#case-tile" color="#ffd35a" x="470" y="0" width="84" height="32"/><use href="#case-tile" color="#ffb949" x="564" y="0" width="84" height="32"/><use href="#case-tile" color="#ff9a3d" x="658" y="0" width="84" height="32"/>
+        <use href="#case-tile" color="#57e8cf" x="0" y="36" width="84" height="32"/><use href="#case-tile" color="#65ed9a" x="94" y="36" width="84" height="32"/><use href="#case-tile" color="#9eef79" x="188" y="36" width="84" height="32"/><use href="#case-tile" color="#d8ee64" x="282" y="36" width="84" height="32"/><use href="#case-tile" color="#ffd35a" x="376" y="36" width="84" height="32"/><use href="#case-tile" color="#ffb949" x="470" y="36" width="84" height="32"/><use href="#case-tile" color="#ff9a3d" x="564" y="36" width="84" height="32"/><use href="#case-tile" color="#5eeaff" x="658" y="36" width="84" height="32"/>
+        <use href="#case-tile" color="#65ed9a" x="0" y="72" width="84" height="32"/><use href="#case-tile" color="#9eef79" x="94" y="72" width="84" height="32"/><use href="#case-tile" color="#d8ee64" x="188" y="72" width="84" height="32"/><use href="#case-tile" color="#ffd35a" x="282" y="72" width="84" height="32"/><use href="#case-tile" color="#ffb949" x="376" y="72" width="84" height="32"/><use href="#case-tile" color="#ff9a3d" x="470" y="72" width="84" height="32"/><use href="#case-tile" color="#5eeaff" x="564" y="72" width="84" height="32"/><use href="#case-tile" color="#57e8cf" x="658" y="72" width="84" height="32"/>
+        <use href="#case-tile" color="#9eef79" x="0" y="108" width="84" height="32"/><use href="#case-tile" color="#d8ee64" x="94" y="108" width="84" height="32"/><use href="#case-tile" color="#ffd35a" x="188" y="108" width="84" height="32"/><use href="#case-tile" color="#ffb949" x="282" y="108" width="84" height="32"/><use href="#case-tile" color="#ff9a3d" x="376" y="108" width="84" height="32"/><use href="#case-tile" color="#5eeaff" x="470" y="108" width="84" height="32"/><use href="#case-tile" color="#57e8cf" x="564" y="108" width="84" height="32"/><use href="#case-tile" color="#65ed9a" x="658" y="108" width="84" height="32"/>
+      </g>
+
+      <path d="M26 710H876" stroke="#eef8ff" stroke-opacity="0.28"/>
       <g font-family="Arial, sans-serif">
-        <text x="28" y="614" fill="#edfaff" font-size="24" font-weight="700">192,000</text>
-        <text x="28" y="636" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">FIXTURE PATH EVALUATIONS</text>
-        <text x="228" y="614" fill="#edfaff" font-size="24" font-weight="700">594,000</text>
-        <text x="228" y="636" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">LANE VERDICTS</text>
-        <text x="428" y="614" fill="#edfaff" font-size="24" font-weight="700">12,096,000</text>
-        <text x="428" y="636" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">PAIRED BIT POSITIONS</text>
-        <text x="680" y="614" fill="#edfaff" font-size="24" font-weight="700">0</text>
-        <text x="680" y="636" fill="#65ed9a" font-family="monospace" font-size="8" letter-spacing="1.8">DIVERGENCES</text>
+        <text x="28" y="742" fill="#edfaff" font-size="24" font-weight="700">256,000</text>
+        <text x="28" y="758" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">FIXTURE PATH EVALUATIONS</text>
+        <text x="228" y="742" fill="#edfaff" font-size="24" font-weight="700">731,000</text>
+        <text x="228" y="758" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">LANE VERDICTS</text>
+        <text x="428" y="742" fill="#edfaff" font-size="24" font-weight="700">15,360,000</text>
+        <text x="428" y="758" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">PAIRED BIT POSITIONS</text>
+        <text x="680" y="742" fill="#edfaff" font-size="24" font-weight="700">0</text>
+        <text x="680" y="758" fill="#65ed9a" font-family="monospace" font-size="8" letter-spacing="1.8">DIVERGENCES</text>
       </g>
 
       <g transform="translate(930 27)">
@@ -162,10 +169,10 @@
       </g>
     </g>
 
-    <text x="100" y="1512" fill="#bc7cff" font-family="monospace" font-size="9" letter-spacing="3">DEVELOPMENT FIXTURE TOPOLOGY</text>
-    <text x="100" y="1554" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">DUAL-PATH VERIFICATION</text>
+    <text x="100" y="1592" fill="#bc7cff" font-family="monospace" font-size="9" letter-spacing="3">DEVELOPMENT FIXTURE TOPOLOGY</text>
+    <text x="100" y="1634" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">DUAL-PATH VERIFICATION</text>
 
-    <g transform="translate(100 1583)">
+    <g transform="translate(100 1663)">
       <rect width="760" height="86" fill="#090e1c" fill-opacity="0.82" stroke="#7cf7ff" stroke-opacity="0.2"/>
       <rect x="26" y="20" width="255" height="48" fill="#040810" stroke="#7cf7ff" stroke-opacity="0.2"/>
       <text x="44" y="43" fill="#edfaff" font-family="Arial, sans-serif" font-size="19" font-weight="700">INTEL</text>
@@ -178,16 +185,16 @@
       <text x="497" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">VSX SEMANTICS // DEV FIXTURE</text>
     </g>
 
-    <g transform="translate(882 1583)">
+    <g transform="translate(882 1663)">
       <rect width="458" height="86" fill="#090e1c" fill-opacity="0.82" stroke="#7cf7ff" stroke-opacity="0.2"/>
       <text x="22" y="25" fill="#7cf7ff" font-family="monospace" font-size="8" letter-spacing="2">INTEGRITY MATRIX</text>
       <text x="22" y="52" fill="#9cb0c2" font-family="monospace" font-size="10">BIT-EXACT CASES</text>
-      <text x="432" y="52" text-anchor="end" fill="#73ffd2" font-family="monospace" font-size="10">96 / 96 ALIGNED</text>
+      <text x="432" y="52" text-anchor="end" fill="#73ffd2" font-family="monospace" font-size="10">128 / 128 ALIGNED</text>
       <text x="22" y="71" fill="#9cb0c2" font-family="monospace" font-size="10">VECTOR STREAM</text>
       <text x="432" y="71" text-anchor="end" fill="#73ffd2" font-family="monospace" font-size="10">DETERMINISTIC</text>
     </g>
 
-    <path d="M40 1712H1400" stroke="#7cf7ff" stroke-opacity="0.2"/>
-    <text x="65" y="1708" fill="#53697d" font-family="monospace" font-size="7" letter-spacing="1.4">SELF-CONTAINED HTML // RESPONSIVE // NON-NORMATIVE SHOWCASE VIEW</text>
+    <path d="M40 1792H1400" stroke="#7cf7ff" stroke-opacity="0.2"/>
+    <text x="65" y="1788" fill="#53697d" font-family="monospace" font-size="7" letter-spacing="1.4">SELF-CONTAINED HTML // RESPONSIVE // NON-NORMATIVE SHOWCASE VIEW</text>
   </g>
 </svg>

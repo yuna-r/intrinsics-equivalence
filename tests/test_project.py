@@ -74,7 +74,7 @@ isa_registry = "isa.json"
             for path in (suite / "cases").iterdir()
             if (path / "case.yaml").is_file()
         }
-        self.assertEqual(len(case_names), 96)
+        self.assertEqual(len(case_names), 128)
 
         for role, prefix in (("intel", "intel"), ("openpower", "power")):
             sources = "\n".join(
@@ -84,7 +84,7 @@ isa_registry = "isa.json"
             self.assertNotIn("example_", sources)
             symbols = set(
                 re.findall(
-                    rf"\b{prefix}_([a-z0-9_]+_(?:f64x2|[iu]8x16|[iu]16x8|[iu]32x4|[iu]64x2))\s*\(",
+                    rf"\b{prefix}_([a-z0-9_]+_(?:f32x4|f64x2|[iu]8x16|[iu]16x8|[iu]32x4|[iu]64x2))\s*\(",
                     sources,
                 )
             )

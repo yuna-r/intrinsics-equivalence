@@ -50,8 +50,8 @@ class ArtifactValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             artifact = self._input(root)
-            self.assertEqual(artifact.record_count, 192)
-            self.assertEqual(len(artifact.records), 192)
+            self.assertEqual(artifact.record_count, 256)
+            self.assertEqual(len(artifact.records), 256)
             self.assertEqual(artifact.case_ids, self.cases.ids)
             self.assertTrue(artifact.isa_registry_matches_local)
 

@@ -6,6 +6,7 @@ typedef __vector signed char i8x16;
 typedef __vector unsigned char u8x16;
 typedef __vector signed int i32x4;
 typedef __vector unsigned int u32x4;
+typedef __vector unsigned long long u64x2;
 
 u16x8 power_add_i16x8(u16x8 a, u16x8 b)
 {
@@ -155,4 +156,52 @@ i16x8 power_shufflehi_i16x8(i16x8 v, unsigned imm)
     return (i16x8){v[0], v[1], v[2], v[3],
                     v[4 + ((imm >> 0) & 3U)], v[4 + ((imm >> 2) & 3U)],
                     v[4 + ((imm >> 4) & 3U)], v[4 + ((imm >> 6) & 3U)]};
+}
+
+i16x8 power_sll_i16x8(i16x8 a, u64x2 count)
+{
+    unsigned long long n = count[0];
+    if (n > 15U) {
+        return (i16x8)vec_splats((unsigned short)0);
+    }
+    return (i16x8)vec_sl((u16x8)a, vec_splats((unsigned short)n));
+}
+
+i16x8 power_srl_i16x8(i16x8 a, u64x2 count)
+{
+    unsigned long long n = count[0];
+    if (n > 15U) {
+        return (i16x8)vec_splats((unsigned short)0);
+    }
+    return (i16x8)vec_sr((u16x8)a, vec_splats((unsigned short)n));
+}
+
+i16x8 power_sra_i16x8(i16x8 a, u64x2 count)
+{
+    unsigned long long raw = count[0];
+    unsigned short n = (unsigned short)(raw > 15U ? 15U : raw);
+    return vec_sra(a, vec_splats(n));
+}
+
+u16x8 power_cmplt_i16x8(u16x8 a, u16x8 b)
+{
+    return (u16x8)vec_cmpgt((i16x8)b, (i16x8)a);
+}
+
+i16x8 power_set_i16x8(short lane7, short lane6, short lane5, short lane4,
+                       short lane3, short lane2, short lane1, short lane0)
+{
+    return (i16x8){lane0, lane1, lane2, lane3,
+                    lane4, lane5, lane6, lane7};
+}
+
+unsigned power_extract_i16x8(i16x8 a, unsigned imm)
+{
+    return (unsigned)(unsigned short)a[imm & 7U];
+}
+
+i16x8 power_insert_i16x8(i16x8 a, int value, unsigned imm)
+{
+    a[imm & 7U] = (short)value;
+    return a;
 }

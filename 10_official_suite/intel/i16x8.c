@@ -159,3 +159,60 @@ i16x8 intel_shufflehi_i16x8(i16x8 v, unsigned imm)
     default: return v;
     }
 }
+
+i16x8 intel_sll_i16x8(i16x8 a, __m128i count)
+{
+    return _mm_sll_epi16(a, count);
+}
+
+i16x8 intel_srl_i16x8(i16x8 a, __m128i count)
+{
+    return _mm_srl_epi16(a, count);
+}
+
+i16x8 intel_sra_i16x8(i16x8 a, __m128i count)
+{
+    return _mm_sra_epi16(a, count);
+}
+
+i16x8 intel_cmplt_i16x8(i16x8 a, i16x8 b)
+{
+    return _mm_cmplt_epi16(a, b);
+}
+
+i16x8 intel_set_i16x8(short lane7, short lane6, short lane5, short lane4,
+                       short lane3, short lane2, short lane1, short lane0)
+{
+    return _mm_set_epi16(lane7, lane6, lane5, lane4,
+                         lane3, lane2, lane1, lane0);
+}
+
+unsigned intel_extract_i16x8(i16x8 a, unsigned imm)
+{
+    switch (imm) {
+    case 0: return (unsigned)_mm_extract_epi16(a, 0);
+    case 1: return (unsigned)_mm_extract_epi16(a, 1);
+    case 2: return (unsigned)_mm_extract_epi16(a, 2);
+    case 3: return (unsigned)_mm_extract_epi16(a, 3);
+    case 4: return (unsigned)_mm_extract_epi16(a, 4);
+    case 5: return (unsigned)_mm_extract_epi16(a, 5);
+    case 6: return (unsigned)_mm_extract_epi16(a, 6);
+    case 7: return (unsigned)_mm_extract_epi16(a, 7);
+    default: return 0;
+    }
+}
+
+i16x8 intel_insert_i16x8(i16x8 a, int value, unsigned imm)
+{
+    switch (imm) {
+    case 0: return _mm_insert_epi16(a, value, 0);
+    case 1: return _mm_insert_epi16(a, value, 1);
+    case 2: return _mm_insert_epi16(a, value, 2);
+    case 3: return _mm_insert_epi16(a, value, 3);
+    case 4: return _mm_insert_epi16(a, value, 4);
+    case 5: return _mm_insert_epi16(a, value, 5);
+    case 6: return _mm_insert_epi16(a, value, 6);
+    case 7: return _mm_insert_epi16(a, value, 7);
+    default: return a;
+    }
+}

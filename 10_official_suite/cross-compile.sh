@@ -23,7 +23,7 @@ fi
 
 mkdir -p "$output_dir/intel" "$output_dir/openpower"
 
-for block in f64x2 i8x16 i16x8 i32x4 i64x2; do
+for block in f32x4 f64x2 i8x16 i16x8 i32x4 i64x2; do
     "$compiler" \
         --target=x86_64-unknown-linux-gnu \
         -march=x86-64 -msse2 \
