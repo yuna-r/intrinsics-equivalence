@@ -6,32 +6,36 @@
   <img alt="ppc64le" src="https://img.shields.io/badge/arch-ppc64le-5c6bc0?style=flat">
 </p>
 
-Intel IntrinsicをOpenPOWERへ移すときの中心部分を、全48ケース分まとめました。
-細切れにせず、f64 / i8 / i16 / i32の4つの塊で読めます。
+Intel IntrinsicをOpenPOWERへ移すときの中心部分を、全96ケース分まとめました。
+細切れにしすぎず、データ型ごとの塊で読めます。
 
 ```text
 openpower/
-├── f64x2.c  18 operations // arithmetic, bit, broadcast, lane, compare
-├── i8x16.c   8 operations // arithmetic, saturation, compare
-├── i16x8.c   8 operations // arithmetic, saturation, compare
-└── i32x4.c  14 operations // arithmetic, logic, compare, shift, lane
+├── f64x2.c  28 operations // arithmetic, bit, construct, lane, compare
+├── i8x16.c  17 operations // arithmetic, saturation, average, SAD, shift, mask
+├── i16x8.c  24 operations // arithmetic, multiply, average, shift, pack, lane
+├── i32x4.c  18 operations // arithmetic, logic, compare, shift, construct, lane
+└── i64x2.c   9 operations // arithmetic, shift, construct, lane
 ```
 
 | Family | Intel Intrinsics | OpenPOWER expression |
 |---|---|---|
 | f64 arithmetic | `_mm_add_pd` / `_mm_sub_pd` / `_mm_mul_pd` | `vec_add` / `vec_sub` / `vec_mul` |
 | f64 bit | `_mm_and_pd` / `_mm_or_pd` / `_mm_xor_pd` | vector `&` / `\|` / `^` |
-| f64 lane | `_mm_set1_pd` / `_mm_move_sd` / unpack ×2 | `vec_splats` / lane initializer |
-| f64 compare | eq / lt / le / gt / ge / neq / ord / unord | lane comparison + all-bits mask |
-| i8 arithmetic / saturation | add / sub / adds / subs | vector operators / `vec_adds` / `vec_subs` |
+| f64 construct / lane | set / set1 / move / shuffle / unpack / cast | splat / lane initializer / bit cast |
+| f64 compare | ordered, unordered, negated predicates | lane comparison + all-bits mask |
+| i8 arithmetic / reduction | add / sub / adds / subs / avg / SAD / min / max | vector operations + half reduction |
+| i8 lane / mask | byte shifts / unpack / movemask | semantic lane initializer + sign-bit pack |
 | i8 compare | `_mm_cmpeq_epi8` / `_mm_cmpgt_epi8` | `vec_cmpeq` / `vec_cmpgt` |
-| i16 arithmetic / saturation | add / sub / adds / subs | vector operators / `vec_adds` / `vec_subs` |
+| i16 arithmetic / multiply | add / sub / saturating / mul / madd / avg / min / max | vector operations + widened products |
 | i16 compare | `_mm_cmpeq_epi16` / `_mm_cmpgt_epi16` | `vec_cmpeq` / `vec_cmpgt` |
-| i32 arithmetic | `_mm_add_epi32` / `_mm_sub_epi32` | vector `+` / `-` |
+| i16 shift / lane / pack | shift / shuffle / unpack / packs | guarded shift / lane initializer / saturating pack |
+| i32 arithmetic / construct | add / sub / even-lane mul / scalar insert / broadcast | vector operations + lane initializer |
 | i32 logic | and / or / xor / andnot | vector bit operators |
 | i32 compare | `_mm_cmpeq_epi32` / `_mm_cmpgt_epi32` | `vec_cmpeq` / `vec_cmpgt` |
 | i32 shift | slli / srli / srai | `vec_sl` / `vec_sr` / `vec_sra` |
-| i32 lane | shuffle / unpacklo / unpackhi | lane initializer |
+| i32 lane / pack | shuffle / unpack / signed pack | lane initializer / saturating pack |
+| i64 arithmetic / shift / lane | add / sub / shift / unpack / move / construct | vector operations + lane initializer |
 
 Linux ppc64leでは通常のnative buildに含まれます。
 

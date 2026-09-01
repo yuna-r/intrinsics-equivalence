@@ -89,7 +89,8 @@ if(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
               10_official_suite/intel/f64x2.c
               10_official_suite/intel/i8x16.c
               10_official_suite/intel/i16x8.c
-              10_official_suite/intel/i32x4.c)
+              10_official_suite/intel/i32x4.c
+              10_official_suite/intel/i64x2.c)
   if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM")
     # Keep the complete case build unit within its declared SSE2 requirement.
     target_compile_options(ioitf_adapter_intel PRIVATE
@@ -134,7 +135,8 @@ elseif(IOITF_BUILD_NATIVE_ADAPTER AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
               10_official_suite/openpower/f64x2.c
               10_official_suite/openpower/i8x16.c
               10_official_suite/openpower/i16x8.c
-              10_official_suite/openpower/i32x4.c)
+              10_official_suite/openpower/i32x4.c
+              10_official_suite/openpower/i64x2.c)
   if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # power8 is the minimum implementation profile for these VSX wrappers.
     target_compile_options(ioitf_adapter_openpower PRIVATE

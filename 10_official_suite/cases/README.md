@@ -3,7 +3,8 @@
 これはframework本体ではなく、独立したexample suiteです。1ケースはRubyのクラス1個に
 近い単位として、1ディレクトリへまとめます。
 
-現在は算術、飽和算術、論理、比較、shift、レーン操作を含む48個のdevelopment case packが
+現在は算術、乗算、飽和算術、平均/SAD、論理、比較、shift、pack、レーン操作を含む
+96個のdevelopment case packが
 あります。Native adapterの実装例は`_mm_add_pd`、`_mm_set1_pd`、
 `_mm_shuffle_epi32`の3ケースです。
 

@@ -2,7 +2,7 @@
 
 This directory implements the first native slice of IOITF-SPEC-001 section 6.
 
-The development suite contains 48 case packs. This native slice currently
+The development suite contains 96 case packs. This native slice currently
 covers `_mm_add_pd`, `_mm_set1_pd`, and `_mm_shuffle_epi32`; the other case
 packs remain development-fixture-only until architecture adapters are added.
 
@@ -30,7 +30,7 @@ Implemented:
   malformed or noncanonical ABI bytes remain `IOITF_CALL_INVALID_ABI`.
 - A Linux ppc64le VSX compatibility implementation boundary with the public symbols
   `power_mm_add_pd`, `power_mm_set1_pd`, and `power_mm_shuffle_epi32`.
-- Reader-facing Intel SSE2 and OpenPOWER VSX examples for all 48 official cases
+- Reader-facing Intel SSE2 and OpenPOWER VSX examples for all 96 official cases
   under `10_official_suite/`. The paired sources cross-compile to x86-64 and
   ppc64le ELF objects with LLVM Clang; native builds also compile the matching
   `ioitf_*_official_suite` object target.

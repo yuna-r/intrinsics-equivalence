@@ -28,6 +28,7 @@ from .errors import (
 )
 from .generator import DEFAULT_SEED, PROFILE_COUNTS, generate_artifact
 from .isa import ISARegistry, load_isa_registry
+from .metrics import VerificationMetrics, collect_verification_metrics
 from .project import load_project
 from .records import derive_input_id
 
@@ -51,6 +52,30 @@ def _contracts(args: argparse.Namespace) -> tuple[CaseRegistry, ISARegistry]:
 
 def _print(value: JSONValue) -> None:
     print(dumps(value))
+
+
+def _print_verification_metrics(
+    metrics: VerificationMetrics, *, stream: TextIO | None = None
+) -> None:
+    destination = sys.stderr if stream is None else stream
+    rate = f"{metrics.match_rate:.2f}".rstrip("0").rstrip(".") + "%"
+    rows = (
+        ("cases", f"{metrics.case_count:,}"),
+        ("trials", f"{metrics.trials:,}"),
+        (
+            "implementation-path evaluations",
+            f"{metrics.implementation_path_evaluations:,}",
+        ),
+        ("lane verdicts", f"{metrics.lane_verdicts:,}"),
+        ("bit positions", f"{metrics.bit_positions:,}"),
+        ("match rate", rate),
+        ("mismatch", f"{metrics.mismatched_inputs:,}"),
+    )
+    width = max(len(label) for label, _value in rows)
+    print("\nVerification metrics", file=destination)
+    for label, value in rows:
+        print(f"  {label:<{width}}  {value:>12}", file=destination)
+    destination.flush()
 
 
 class _CheckProgress:
@@ -634,6 +659,7 @@ def _development_check(args: argparse.Namespace) -> int:
 
         summary = read_canonical_json(comparison / "summary.json")
         assert isinstance(summary, dict)
+        metrics = collect_verification_metrics(cases, summary)
         result: dict[str, JSONValue] = {
             "artifacts": str(output),
             "case_count": len(cases),
@@ -662,6 +688,8 @@ def _development_check(args: argparse.Namespace) -> int:
     status = str(summary["outcome"]).upper()
     with progress.stage(7, f"{status} - {generated.record_count:,} trials"):
         pass
+    if not args.quiet:
+        _print_verification_metrics(metrics)
     _print(result)
     return exit_code
 

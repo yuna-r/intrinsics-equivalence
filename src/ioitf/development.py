@@ -55,8 +55,20 @@ def vector(element: str, values: tuple[int, ...]) -> dict[str, JSONValue]:
 
 
 def scalar(element: str, value: int) -> dict[str, JSONValue]:
-    digits = {"f64": 16}[element]
-    return {"bits": f"0x{value:0{digits}x}", "element": element}
+    digits = {
+        "f32": 8,
+        "f64": 16,
+        "i8": 2,
+        "i16": 4,
+        "i32": 8,
+        "i64": 16,
+        "u8": 2,
+        "u16": 4,
+        "u32": 8,
+        "u64": 16,
+    }[element]
+    mask = (1 << (digits * 4)) - 1
+    return {"bits": f"0x{value & mask:0{digits}x}", "element": element}
 
 
 def rounding_modes(case: CaseDefinition) -> list[str]:

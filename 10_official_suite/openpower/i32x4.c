@@ -2,6 +2,8 @@
 
 typedef __vector signed int i32x4;
 typedef __vector unsigned int u32x4;
+typedef __vector signed short i16x8;
+typedef __vector unsigned long long u64x2;
 
 u32x4 power_add_i32x4(u32x4 a, u32x4 b)
 {
@@ -79,4 +81,25 @@ u32x4 power_unpacklo_i32x4(u32x4 a, u32x4 b)
 u32x4 power_unpackhi_i32x4(u32x4 a, u32x4 b)
 {
     return (u32x4){a[2], b[2], a[3], b[3]};
+}
+
+u64x2 power_mul_u32x4(u32x4 a, u32x4 b)
+{
+    return (u64x2){(unsigned long long)a[0] * b[0],
+                    (unsigned long long)a[2] * b[2]};
+}
+
+i16x8 power_packs_i32x4(i32x4 a, i32x4 b)
+{
+    return vec_packs(a, b);
+}
+
+i32x4 power_cvtsi32_i32x4(int value)
+{
+    return (i32x4){value, 0, 0, 0};
+}
+
+i32x4 power_set1_i32x4(int value)
+{
+    return vec_splats(value);
 }

@@ -19,7 +19,7 @@ from ioitf.canonical import (  # noqa: E402
     sha256_file,
 )
 from ioitf.cases import load_case_definitions, validate_case_definition  # noqa: E402
-from ioitf.development import load_development_case, vector  # noqa: E402
+from ioitf.development import load_development_case, scalar, vector  # noqa: E402
 from ioitf.errors import ValidationError  # noqa: E402
 from ioitf.generator import SplitMix64, generate_artifact  # noqa: E402
 from ioitf.isa import load_isa_registry, project_used_isa  # noqa: E402
@@ -41,6 +41,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.add.f64x2.default",
                 "sse2.add.i16x8.default",
                 "sse2.add.i32x4.default",
+                "sse2.add.i64x2.default",
                 "sse2.add.i8x16.default",
                 "sse2.adds.i16x8.default",
                 "sse2.adds.i8x16.default",
@@ -48,7 +49,12 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.adds.u8x16.default",
                 "sse2.and.f64x2.default",
                 "sse2.and.i32x4.default",
+                "sse2.andnot.f64x2.default",
                 "sse2.andnot.i32x4.default",
+                "sse2.avg.u16x8.default",
+                "sse2.avg.u8x16.default",
+                "sse2.cast.f64x2.i64x2",
+                "sse2.cast.i64x2.f64x2",
                 "sse2.cmpeq.f64x2.default",
                 "sse2.cmpeq.i16x8.default",
                 "sse2.cmpeq.i32x4.default",
@@ -61,29 +67,71 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.cmple.f64x2.default",
                 "sse2.cmplt.f64x2.default",
                 "sse2.cmpneq.f64x2.default",
+                "sse2.cmpnge.f64x2.default",
+                "sse2.cmpngt.f64x2.default",
+                "sse2.cmpnle.f64x2.default",
+                "sse2.cmpnlt.f64x2.default",
                 "sse2.cmpord.f64x2.default",
                 "sse2.cmpunord.f64x2.default",
+                "sse2.cvtsi32.i32x4.default",
+                "sse2.cvtsi64.i64x2.default",
+                "sse2.madd.i16x8.default",
+                "sse2.max.i16x8.default",
+                "sse2.max.u8x16.default",
+                "sse2.min.i16x8.default",
+                "sse2.min.u8x16.default",
                 "sse2.move.f64x2.default",
+                "sse2.move.i64x2.default",
+                "sse2.movemask.f64x2.default",
+                "sse2.movemask.i8x16.default",
                 "sse2.mul.f64x2.default",
+                "sse2.mul.u32x4.default",
+                "sse2.mulhi.i16x8.default",
+                "sse2.mulhi.u16x8.default",
+                "sse2.mullo.i16x8.default",
                 "sse2.or.f64x2.default",
                 "sse2.or.i32x4.default",
+                "sse2.packs.i16x8.default",
+                "sse2.packs.i32x4.default",
+                "sse2.packus.i16x8.default",
+                "sse2.sad.u8x16.default",
+                "sse2.set.f64x2.high-low",
                 "sse2.set1.f64x2.default",
+                "sse2.set1.i32x4.default",
+                "sse2.set1.i64x2.default",
+                "sse2.shuffle.f64x2.imm8",
                 "sse2.shuffle.i32x4.imm8",
+                "sse2.shufflehi.i16x8.imm8",
+                "sse2.shufflelo.i16x8.imm8",
+                "sse2.slli-bytes.u8x16.imm8",
+                "sse2.slli.i16x8.imm8",
                 "sse2.slli.i32x4.imm8",
+                "sse2.slli.i64x2.imm8",
+                "sse2.srai.i16x8.imm8",
                 "sse2.srai.i32x4.imm8",
+                "sse2.srli-bytes.u8x16.imm8",
+                "sse2.srli.i16x8.imm8",
                 "sse2.srli.i32x4.imm8",
+                "sse2.srli.i64x2.imm8",
                 "sse2.sub.f64x2.default",
                 "sse2.sub.i16x8.default",
                 "sse2.sub.i32x4.default",
+                "sse2.sub.i64x2.default",
                 "sse2.sub.i8x16.default",
                 "sse2.subs.i16x8.default",
                 "sse2.subs.i8x16.default",
                 "sse2.subs.u16x8.default",
                 "sse2.subs.u8x16.default",
                 "sse2.unpackhi.f64x2.default",
+                "sse2.unpackhi.i16x8.default",
                 "sse2.unpackhi.i32x4.default",
+                "sse2.unpackhi.i64x2.default",
+                "sse2.unpackhi.i8x16.default",
                 "sse2.unpacklo.f64x2.default",
+                "sse2.unpacklo.i16x8.default",
                 "sse2.unpacklo.i32x4.default",
+                "sse2.unpacklo.i64x2.default",
+                "sse2.unpacklo.i8x16.default",
                 "sse2.xor.f64x2.default",
                 "sse2.xor.i32x4.default",
             ),
@@ -117,6 +165,23 @@ class CaseAndGeneratorTests(unittest.TestCase):
         for element, lane in expected.items():
             with self.subTest(element=element):
                 self.assertEqual(vector(element, (-1,))["lanes"], [lane])
+
+    def test_scalar_helper_formats_every_supported_width(self) -> None:
+        expected = {
+            "f32": "0xffffffff",
+            "f64": "0xffffffffffffffff",
+            "i8": "0xff",
+            "i16": "0xffff",
+            "i32": "0xffffffff",
+            "i64": "0xffffffffffffffff",
+            "u8": "0xff",
+            "u16": "0xffff",
+            "u32": "0xffffffff",
+            "u64": "0xffffffffffffffff",
+        }
+        for element, bits in expected.items():
+            with self.subTest(element=element):
+                self.assertEqual(scalar(element, -1), {"bits": bits, "element": element})
 
     def test_yaml_rejects_duplicate_keys_aliases_and_non_json_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -175,7 +240,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 240)
+            self.assertEqual(first.record_count, 480)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -637,6 +702,453 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 with self.subTest(case_id=case_id):
                     actual = load_development_case(self.cases.get(case_id)).execute(record)
                     self.assertEqual(actual, expected)
+
+    def test_new_multiply_models_have_independent_golden_results(self) -> None:
+        a = (0x7FFF, 0x8000, 0xFFFF, 0x1234, 0xFFFE, 0x4000, 0xC000, 3)
+        b = (2, 2, 0xFFFF, 0x10, 0x8000, 4, 0xFFFC, 5)
+        specifications = {
+            "sse2.mullo.i16x8.default": (
+                "i16",
+                (0xFFFE, 0, 1, 0x2340, 0, 0, 0, 0x000F),
+            ),
+            "sse2.mulhi.i16x8.default": (
+                "i16",
+                (0, 0xFFFF, 0, 1, 1, 1, 1, 0),
+            ),
+            "sse2.mulhi.u16x8.default": (
+                "u16",
+                (0, 1, 0xFFFE, 1, 0x7FFF, 1, 0xBFFD, 0),
+            ),
+            "sse2.madd.i16x8.default": (
+                "i32",
+                (0xFFFFFFFE, 0x00012341, 0x00020000, 0x0001000F),
+            ),
+        }
+        for case_id, (result_element, expected) in specifications.items():
+            operand_element = "u16" if ".u16x8." in case_id else "i16"
+            record = {
+                "operands": {
+                    "a": vector(operand_element, a),
+                    "b": vector(operand_element, b),
+                }
+            }
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": vector(result_element, expected)})
+
+        unsigned_record = {
+            "operands": {
+                "a": vector("u32", (0xFFFFFFFF, 0x11111111, 0x80000000, 7)),
+                "b": vector("u32", (2, 0x22222222, 0xFFFFFFFF, 9)),
+            }
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.mul.u32x4.default")
+        ).execute(unsigned_record)
+        self.assertEqual(
+            actual,
+            {
+                "return": vector(
+                    "u64", (0x00000001FFFFFFFE, 0x7FFFFFFF80000000)
+                )
+            },
+        )
+
+        overflow_record = {
+            "operands": {
+                "a": vector("i16", (0x8000,) * 8),
+                "b": vector("i16", (0x8000,) * 8),
+            }
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.madd.i16x8.default")
+        ).execute(overflow_record)
+        self.assertEqual(
+            actual, {"return": vector("i32", (0x80000000,) * 4)}
+        )
+
+    def test_new_average_reduction_and_minmax_models_have_golden_results(self) -> None:
+        ascending = tuple(range(16))
+        descending = tuple(reversed(ascending))
+        byte_record = {
+            "operands": {
+                "a": vector("u8", ascending),
+                "b": vector("u8", descending),
+            }
+        }
+        byte_expected = {
+            "sse2.avg.u8x16.default": vector("u8", (8,) * 16),
+            "sse2.sad.u8x16.default": vector("u64", (64, 64)),
+            "sse2.min.u8x16.default": vector(
+                "u8", (0, 1, 2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 3, 2, 1, 0)
+            ),
+            "sse2.max.u8x16.default": vector(
+                "u8", (15, 14, 13, 12, 11, 10, 9, 8, 8, 9, 10, 11, 12, 13, 14, 15)
+            ),
+        }
+        for case_id, expected in byte_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    byte_record
+                )
+                self.assertEqual(actual, {"return": expected})
+
+        avg_record = {
+            "operands": {
+                "a": vector(
+                    "u16", (0, 1, 0xFFFF, 0xFFFE, 0x8000, 0x7FFF, 0x1234, 0xAAAA)
+                ),
+                "b": vector(
+                    "u16", (0, 2, 0xFFFF, 1, 0x8001, 0x7FFF, 0xEDCB, 0x5555)
+                ),
+            }
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.avg.u16x8.default")
+        ).execute(avg_record)
+        self.assertEqual(
+            actual,
+            {
+                "return": vector(
+                    "u16", (0, 2, 0xFFFF, 0x8000, 0x8001, 0x7FFF, 0x8000, 0x8000)
+                )
+            },
+        )
+
+        signed_record = {
+            "operands": {
+                "a": vector(
+                    "i16", (0x7FFF, 0x8000, 0xFFFF, 0x1234, 0xFFFE, 0x4000, 0xC000, 3)
+                ),
+                "b": vector("i16", (2, 2, 0xFFFF, 0x10, 0x8000, 4, 0xFFFC, 5)),
+            }
+        }
+        signed_expected = {
+            "sse2.min.i16x8.default": (2, 0x8000, 0xFFFF, 0x10, 0x8000, 4, 0xC000, 3),
+            "sse2.max.i16x8.default": (0x7FFF, 2, 0xFFFF, 0x1234, 0xFFFE, 0x4000, 0xFFFC, 5),
+        }
+        for case_id, expected in signed_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    signed_record
+                )
+                self.assertEqual(actual, {"return": vector("i16", expected)})
+
+    def test_new_shift_models_have_independent_golden_results(self) -> None:
+        lanes16 = (1, 0x8000, 0xFFFF, 0x1234, 0x7FFF, 0x4000, 0xC000, 3)
+        expected16 = {
+            "sse2.slli.i16x8.imm8": (2, 0, 0xFFFE, 0x2468, 0xFFFE, 0x8000, 0x8000, 6),
+            "sse2.srli.i16x8.imm8": (0, 0x4000, 0x7FFF, 0x091A, 0x3FFF, 0x2000, 0x6000, 1),
+            "sse2.srai.i16x8.imm8": (0, 0xC000, 0xFFFF, 0x091A, 0x3FFF, 0x2000, 0xE000, 1),
+        }
+        for case_id, expected in expected16.items():
+            record = {
+                "immediates": {"imm8": 1},
+                "operands": {"a": vector("i16", lanes16)},
+            }
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": vector("i16", expected)})
+
+        lanes64 = (1, 0x8000000000000001)
+        expected64 = {
+            "sse2.slli.i64x2.imm8": (0x8000000000000000, 0x8000000000000000),
+            "sse2.srli.i64x2.imm8": (0, 1),
+        }
+        for case_id, expected in expected64.items():
+            record = {
+                "immediates": {"imm8": 63},
+                "operands": {"a": vector("i64", lanes64)},
+            }
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": vector("i64", expected)})
+
+        bytes_record = {
+            "immediates": {"imm8": 3},
+            "operands": {"a": vector("u8", tuple(range(16)))},
+        }
+        byte_expected = {
+            "sse2.slli-bytes.u8x16.imm8": (0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+            "sse2.srli-bytes.u8x16.imm8": (3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0),
+        }
+        for case_id, expected in byte_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    bytes_record
+                )
+                self.assertEqual(actual, {"return": vector("u8", expected)})
+
+        wide16_expected = {
+            "sse2.slli.i16x8.imm8": (0,) * 8,
+            "sse2.srli.i16x8.imm8": (0,) * 8,
+            "sse2.srai.i16x8.imm8": (0, 0xFFFF, 0xFFFF, 0, 0, 0, 0xFFFF, 0),
+        }
+        for case_id, expected in wide16_expected.items():
+            record = {
+                "immediates": {"imm8": 16},
+                "operands": {"a": vector("i16", lanes16)},
+            }
+            with self.subTest(case_id=case_id, imm8=16):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": vector("i16", expected)})
+
+    def test_new_i64_arithmetic_move_and_unpack_models_have_golden_results(self) -> None:
+        arithmetic_record = {
+            "operands": {
+                "a": vector("i64", (0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF)),
+                "b": vector("i64", (1, 1)),
+            }
+        }
+        arithmetic_expected = {
+            "sse2.add.i64x2.default": (0, 0x8000000000000000),
+            "sse2.sub.i64x2.default": (0xFFFFFFFFFFFFFFFE, 0x7FFFFFFFFFFFFFFE),
+        }
+        for case_id, expected in arithmetic_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    arithmetic_record
+                )
+                self.assertEqual(actual, {"return": vector("i64", expected)})
+
+        move_record = {
+            "operands": {
+                "a": vector("i64", (0x1111111111111111, 0x2222222222222222))
+            }
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.move.i64x2.default")
+        ).execute(move_record)
+        self.assertEqual(
+            actual, {"return": vector("i64", (0x1111111111111111, 0))}
+        )
+
+        unpack_specs = (
+            (
+                "i8",
+                tuple(range(16)),
+                tuple(range(0x80, 0x90)),
+                {
+                    "sse2.unpacklo.i8x16.default": tuple(
+                        value for pair in zip(range(8), range(0x80, 0x88)) for value in pair
+                    ),
+                    "sse2.unpackhi.i8x16.default": tuple(
+                        value for pair in zip(range(8, 16), range(0x88, 0x90)) for value in pair
+                    ),
+                },
+            ),
+            (
+                "i16",
+                tuple(range(8)),
+                tuple(range(0x10, 0x18)),
+                {
+                    "sse2.unpacklo.i16x8.default": (0, 0x10, 1, 0x11, 2, 0x12, 3, 0x13),
+                    "sse2.unpackhi.i16x8.default": (4, 0x14, 5, 0x15, 6, 0x16, 7, 0x17),
+                },
+            ),
+            (
+                "i64",
+                (1, 2),
+                (0xA, 0xB),
+                {
+                    "sse2.unpacklo.i64x2.default": (1, 0xA),
+                    "sse2.unpackhi.i64x2.default": (2, 0xB),
+                },
+            ),
+        )
+        for element, a, b, expectations in unpack_specs:
+            record = {"operands": {"a": vector(element, a), "b": vector(element, b)}}
+            for case_id, expected in expectations.items():
+                with self.subTest(case_id=case_id):
+                    actual = load_development_case(self.cases.get(case_id)).execute(
+                        record
+                    )
+                    self.assertEqual(actual, {"return": vector(element, expected)})
+
+    def test_new_pack_shuffle_and_construct_models_have_golden_results(self) -> None:
+        a16 = (0x8000, 0xFF80, 0xFF7F, 0, 0x7F, 0x80, 0x7FFF, 0xFFFF)
+        b16 = (1, 0xFF, 0xFF00, 0x7F00, 0x8100, 0x80, 0xFF81, 0x7E)
+        pack_record = {
+            "operands": {"a": vector("i16", a16), "b": vector("i16", b16)}
+        }
+        pack_expected = {
+            "sse2.packs.i16x8.default": (
+                "i8",
+                (0x80, 0x80, 0x80, 0, 0x7F, 0x7F, 0x7F, 0xFF,
+                 1, 0x7F, 0x80, 0x7F, 0x80, 0x7F, 0x81, 0x7E),
+            ),
+            "sse2.packus.i16x8.default": (
+                "u8",
+                (0, 0, 0, 0, 0x7F, 0x80, 0xFF, 0,
+                 1, 0xFF, 0, 0xFF, 0, 0x80, 0, 0x7E),
+            ),
+        }
+        for case_id, (element, expected) in pack_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    pack_record
+                )
+                self.assertEqual(actual, {"return": vector(element, expected)})
+
+        packs32_record = {
+            "operands": {
+                "a": vector("i32", (0x80000000, 0xFFFF8000, 0xFFFF7FFF, 0)),
+                "b": vector("i32", (0x7FFF, 0x8000, 0x7FFFFFFF, 0xFFFFFFFF)),
+            }
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.packs.i32x4.default")
+        ).execute(packs32_record)
+        self.assertEqual(
+            actual,
+            {
+                "return": vector(
+                    "i16", (0x8000, 0x8000, 0x8000, 0, 0x7FFF, 0x7FFF, 0x7FFF, 0xFFFF)
+                )
+            },
+        )
+
+        shuffle_record = {
+            "immediates": {"imm8": 27},
+            "operands": {"a": vector("i16", tuple(range(8)))},
+        }
+        shuffle_expected = {
+            "sse2.shufflelo.i16x8.imm8": (3, 2, 1, 0, 4, 5, 6, 7),
+            "sse2.shufflehi.i16x8.imm8": (0, 1, 2, 3, 7, 6, 5, 4),
+        }
+        for case_id, expected in shuffle_expected.items():
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(
+                    shuffle_record
+                )
+                self.assertEqual(actual, {"return": vector("i16", expected)})
+
+        pd_record = {
+            "immediates": {"imm8": 2},
+            "operands": {
+                "a": vector("f64", (0x1111111111111111, 0x2222222222222222)),
+                "b": vector("f64", (0xAAAAAAAAAAAAAAAA, 0xBBBBBBBBBBBBBBBB)),
+            },
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.shuffle.f64x2.imm8")
+        ).execute(pd_record)
+        self.assertEqual(
+            actual,
+            {"return": vector("f64", (0x1111111111111111, 0xBBBBBBBBBBBBBBBB))},
+        )
+
+        constructors = (
+            (
+                "sse2.cvtsi32.i32x4.default",
+                {"operands": {"value": scalar("i32", 0x89ABCDEF)}},
+                vector("i32", (0x89ABCDEF, 0, 0, 0)),
+            ),
+            (
+                "sse2.cvtsi64.i64x2.default",
+                {"operands": {"value": scalar("i64", 0xFEDCBA9876543210)}},
+                vector("i64", (0xFEDCBA9876543210, 0)),
+            ),
+            (
+                "sse2.set1.i32x4.default",
+                {"operands": {"value": scalar("i32", 0x89ABCDEF)}},
+                vector("i32", (0x89ABCDEF,) * 4),
+            ),
+            (
+                "sse2.set1.i64x2.default",
+                {"operands": {"value": scalar("i64", 0xFEDCBA9876543210)}},
+                vector("i64", (0xFEDCBA9876543210,) * 2),
+            ),
+            (
+                "sse2.set.f64x2.high-low",
+                {
+                    "operands": {
+                        "high": scalar("f64", 0xAAAAAAAAAAAAAAAA),
+                        "low": scalar("f64", 0x1111111111111111),
+                    }
+                },
+                vector("f64", (0x1111111111111111, 0xAAAAAAAAAAAAAAAA)),
+            ),
+        )
+        for case_id, record, expected in constructors:
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": expected})
+
+    def test_new_bitcast_mask_and_negated_compare_models_have_golden_results(self) -> None:
+        lanes = (0x0123456789ABCDEF, 0xFEDCBA9876543210)
+        casts = (
+            ("sse2.cast.i64x2.f64x2", "i64", "f64"),
+            ("sse2.cast.f64x2.i64x2", "f64", "i64"),
+        )
+        for case_id, source, result in casts:
+            record = {"operands": {"a": vector(source, lanes)}}
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": vector(result, lanes)})
+
+        bit_record = {
+            "operands": {
+                "a": vector("f64", (0xFFFF0000FFFF0000, 0x0123456789ABCDEF)),
+                "b": vector("f64", (0x0F0F0F0F0F0F0F0F, 0xFEDCBA9876543210)),
+            }
+        }
+        actual = load_development_case(
+            self.cases.get("sse2.andnot.f64x2.default")
+        ).execute(bit_record)
+        self.assertEqual(
+            actual,
+            {"return": vector("f64", (0x00000F0F00000F0F, 0xFEDCBA9876543210))},
+        )
+
+        masks = (
+            (
+                "sse2.movemask.i8x16.default",
+                {"operands": {"a": vector("i8", (0x80, 0, 0, 0xFF, 0, 0, 0, 0, 0x80, 0, 0, 0, 0, 0, 0, 0x80))}},
+                0x00008109,
+            ),
+            (
+                "sse2.movemask.f64x2.default",
+                {"operands": {"a": vector("f64", (0, 0x8000000000000000))}},
+                2,
+            ),
+        )
+        for case_id, record, expected in masks:
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": scalar("i32", expected)})
+
+        true = 0xFFFFFFFFFFFFFFFF
+        false = 0
+        ordered_record = {
+            "operands": {
+                "a": vector("f64", (0x3FF0000000000000, 0x4000000000000000)),
+                "b": vector("f64", (0x3FF0000000000000, 0x3FF0000000000000)),
+            }
+        }
+        expected = {
+            "sse2.cmpnlt.f64x2.default": (true, true),
+            "sse2.cmpnle.f64x2.default": (false, true),
+            "sse2.cmpngt.f64x2.default": (true, false),
+            "sse2.cmpnge.f64x2.default": (false, false),
+        }
+        for case_id, lanes_expected in expected.items():
+            with self.subTest(case_id=case_id):
+                pack = load_development_case(self.cases.get(case_id))
+                self.assertEqual(
+                    pack.execute(ordered_record),
+                    {"return": vector("f64", lanes_expected)},
+                )
+                unordered = {
+                    "operands": {
+                        "a": vector("f64", (0x7FF8000000000042, 0x7FF0000000000001)),
+                        "b": vector("f64", (0x3FF0000000000000, 0x4000000000000000)),
+                    }
+                }
+                self.assertEqual(
+                    pack.execute(unordered),
+                    {"return": vector("f64", (true, true))},
+                )
 
     def test_input_id_does_not_include_sequence_or_generation(self) -> None:
         record = {

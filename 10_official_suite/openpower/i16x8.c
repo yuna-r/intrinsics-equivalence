@@ -2,6 +2,10 @@
 
 typedef __vector signed short i16x8;
 typedef __vector unsigned short u16x8;
+typedef __vector signed char i8x16;
+typedef __vector unsigned char u8x16;
+typedef __vector signed int i32x4;
+typedef __vector unsigned int u32x4;
 
 u16x8 power_add_i16x8(u16x8 a, u16x8 b)
 {
@@ -41,4 +45,114 @@ u16x8 power_cmpeq_i16x8(u16x8 a, u16x8 b)
 u16x8 power_cmpgt_i16x8(u16x8 a, u16x8 b)
 {
     return (u16x8)vec_cmpgt((i16x8)a, (i16x8)b);
+}
+
+i16x8 power_mullo_i16x8(i16x8 a, i16x8 b)
+{
+    return (i16x8)((u16x8)a * (u16x8)b);
+}
+
+static unsigned short signed_mul_high(short a, short b)
+{
+    unsigned product = (unsigned)((int)a * (int)b);
+    return (unsigned short)(product >> 16);
+}
+
+i16x8 power_mulhi_i16x8(i16x8 a, i16x8 b)
+{
+    return (i16x8)(u16x8){
+        signed_mul_high(a[0], b[0]), signed_mul_high(a[1], b[1]),
+        signed_mul_high(a[2], b[2]), signed_mul_high(a[3], b[3]),
+        signed_mul_high(a[4], b[4]), signed_mul_high(a[5], b[5]),
+        signed_mul_high(a[6], b[6]), signed_mul_high(a[7], b[7])};
+}
+
+static unsigned short unsigned_mul_high(unsigned short a, unsigned short b)
+{
+    return (unsigned short)(((unsigned)a * (unsigned)b) >> 16);
+}
+
+u16x8 power_mulhi_u16x8(u16x8 a, u16x8 b)
+{
+    return (u16x8){
+        unsigned_mul_high(a[0], b[0]), unsigned_mul_high(a[1], b[1]),
+        unsigned_mul_high(a[2], b[2]), unsigned_mul_high(a[3], b[3]),
+        unsigned_mul_high(a[4], b[4]), unsigned_mul_high(a[5], b[5]),
+        unsigned_mul_high(a[6], b[6]), unsigned_mul_high(a[7], b[7])};
+}
+
+i32x4 power_madd_i16x8(i16x8 a, i16x8 b)
+{
+    return vec_msum(a, b, vec_splats(0));
+}
+
+u16x8 power_avg_u16x8(u16x8 a, u16x8 b)
+{
+    return vec_avg(a, b);
+}
+
+i16x8 power_min_i16x8(i16x8 a, i16x8 b)
+{
+    return vec_min(a, b);
+}
+
+i16x8 power_max_i16x8(i16x8 a, i16x8 b)
+{
+    return vec_max(a, b);
+}
+
+i16x8 power_slli_i16x8(i16x8 v, unsigned imm)
+{
+    if (imm > 15U) {
+        return (i16x8)vec_splats((unsigned short)0);
+    }
+    return (i16x8)vec_sl((u16x8)v, vec_splats((unsigned short)imm));
+}
+
+i16x8 power_srli_i16x8(i16x8 v, unsigned imm)
+{
+    if (imm > 15U) {
+        return (i16x8)vec_splats((unsigned short)0);
+    }
+    return (i16x8)vec_sr((u16x8)v, vec_splats((unsigned short)imm));
+}
+
+i16x8 power_srai_i16x8(i16x8 v, unsigned imm)
+{
+    unsigned count = imm > 15U ? 15U : imm;
+    return vec_sra(v, vec_splats((unsigned short)count));
+}
+
+i16x8 power_unpacklo_i16x8(i16x8 a, i16x8 b)
+{
+    return (i16x8){a[0], b[0], a[1], b[1], a[2], b[2], a[3], b[3]};
+}
+
+i16x8 power_unpackhi_i16x8(i16x8 a, i16x8 b)
+{
+    return (i16x8){a[4], b[4], a[5], b[5], a[6], b[6], a[7], b[7]};
+}
+
+i8x16 power_packs_i16x8(i16x8 a, i16x8 b)
+{
+    return vec_packs(a, b);
+}
+
+u8x16 power_packus_i16x8(i16x8 a, i16x8 b)
+{
+    return vec_packsu(a, b);
+}
+
+i16x8 power_shufflelo_i16x8(i16x8 v, unsigned imm)
+{
+    return (i16x8){v[(imm >> 0) & 3U], v[(imm >> 2) & 3U],
+                    v[(imm >> 4) & 3U], v[(imm >> 6) & 3U],
+                    v[4], v[5], v[6], v[7]};
+}
+
+i16x8 power_shufflehi_i16x8(i16x8 v, unsigned imm)
+{
+    return (i16x8){v[0], v[1], v[2], v[3],
+                    v[4 + ((imm >> 0) & 3U)], v[4 + ((imm >> 2) & 3U)],
+                    v[4 + ((imm >> 4) & 3U)], v[4 + ((imm >> 6) & 3U)]};
 }

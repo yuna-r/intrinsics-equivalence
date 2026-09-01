@@ -101,3 +101,23 @@ i32x4 intel_unpackhi_i32x4(i32x4 a, i32x4 b)
 {
     return _mm_unpackhi_epi32(a, b);
 }
+
+i32x4 intel_mul_u32x4(i32x4 a, i32x4 b)
+{
+    return _mm_mul_epu32(a, b);
+}
+
+i32x4 intel_packs_i32x4(i32x4 a, i32x4 b)
+{
+    return _mm_packs_epi32(a, b);
+}
+
+i32x4 intel_cvtsi32_i32x4(int value)
+{
+    return _mm_cvtsi32_si128(value);
+}
+
+i32x4 intel_set1_i32x4(int value)
+{
+    return _mm_set1_epi32(value);
+}

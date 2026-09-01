@@ -91,3 +91,59 @@ f64x2 intel_cmpunord_f64x2(f64x2 a, f64x2 b)
 {
     return _mm_cmpunord_pd(a, b);
 }
+
+f64x2 intel_shuffle_f64x2(f64x2 a, f64x2 b, unsigned imm)
+{
+    switch (imm) {
+    case 0: return _mm_shuffle_pd(a, b, 0);
+    case 1: return _mm_shuffle_pd(a, b, 1);
+    case 2: return _mm_shuffle_pd(a, b, 2);
+    case 3: return _mm_shuffle_pd(a, b, 3);
+    default: return a;
+    }
+}
+
+f64x2 intel_set_f64x2(double high, double low)
+{
+    return _mm_set_pd(high, low);
+}
+
+f64x2 intel_cast_i64x2_f64x2(__m128i value)
+{
+    return _mm_castsi128_pd(value);
+}
+
+__m128i intel_cast_f64x2_i64x2(f64x2 value)
+{
+    return _mm_castpd_si128(value);
+}
+
+f64x2 intel_andnot_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_andnot_pd(a, b);
+}
+
+int intel_movemask_f64x2(f64x2 value)
+{
+    return _mm_movemask_pd(value);
+}
+
+f64x2 intel_cmpnlt_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_cmpnlt_pd(a, b);
+}
+
+f64x2 intel_cmpnle_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_cmpnle_pd(a, b);
+}
+
+f64x2 intel_cmpngt_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_cmpngt_pd(a, b);
+}
+
+f64x2 intel_cmpnge_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_cmpnge_pd(a, b);
+}

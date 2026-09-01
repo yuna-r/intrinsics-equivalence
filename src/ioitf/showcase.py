@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Iterable, Mapping
 
 from .canonical import JSONValue, atomic_write
-from .cases import ELEMENT_WIDTHS, CaseDefinition
+from .cases import CaseDefinition
+from .metrics import collect_verification_metrics
 
 
 def _text(value: object) -> str:
@@ -36,29 +37,6 @@ def _signature(case: CaseDefinition) -> str:
         assert isinstance(argument, dict)
         argument_shapes.append(f"{argument['name']}: {_shape(argument)}")
     return f"{' · '.join(argument_shapes)} → {_shape(signature['return'])}"
-
-
-def _return_vector_measurements(
-    cases: tuple[CaseDefinition, ...], vectors_each: int
-) -> tuple[int, int]:
-    """Return matrix lane positions and paired output-bit positions."""
-
-    lane_positions = 0
-    paired_bit_positions = 0
-    for case in cases:
-        return_shape = case.signature["return"]
-        assert isinstance(return_shape, dict)
-        lanes = int(return_shape.get("lanes", 1))
-        if lanes < 1:
-            raise ValueError("showcase return-vector lanes must be positive")
-        element = str(return_shape.get("element", ""))
-        try:
-            element_bits = ELEMENT_WIDTHS[element]
-        except KeyError as error:
-            raise ValueError(f"unsupported return element for showcase: {element!r}") from error
-        lane_positions += lanes * vectors_each
-        paired_bit_positions += element_bits * lanes * vectors_each
-    return lane_positions, paired_bit_positions
 
 
 def _case_cards(cases: tuple[CaseDefinition, ...], vectors_each: int) -> str:
@@ -105,26 +83,19 @@ def render_showcase_html(
     """Render a portable report. All supplied text is escaped before insertion."""
 
     ordered_cases = tuple(cases)
-    case_count = len(ordered_cases)
-    record_count = int(summary["record_count"])
-    if record_count < 0:
-        raise ValueError("showcase record_count must not be negative")
-    if case_count == 0 and record_count:
-        raise ValueError("showcase records require at least one case")
-    if case_count and record_count % case_count:
-        raise ValueError("showcase record_count must divide evenly across cases")
-    matched = int(summary["matched_inputs"])
-    mismatched = int(summary["mismatched_inputs"])
-    not_comparable = int(summary["not_comparable_inputs"])
-    mismatch_atoms = int(summary["mismatch_atoms"])
+    metrics = collect_verification_metrics(ordered_cases, summary)
+    case_count = metrics.case_count
+    record_count = metrics.trials
+    matched = metrics.matched_inputs
+    mismatched = metrics.mismatched_inputs
+    not_comparable = metrics.not_comparable_inputs
+    mismatch_atoms = metrics.mismatch_atoms
     outcome = str(summary["outcome"])
-    match_rate = 100.0 if record_count == 0 else matched * 100.0 / record_count
-    rate_text = f"{match_rate:.2f}".rstrip("0").rstrip(".")
-    vectors_each = record_count // case_count if case_count else 0
-    path_executions = record_count * 2
-    lane_positions, paired_bit_positions = _return_vector_measurements(
-        ordered_cases, vectors_each
-    )
+    rate_text = f"{metrics.match_rate:.2f}".rstrip("0").rstrip(".")
+    vectors_each = metrics.vectors_per_case
+    path_executions = metrics.implementation_path_evaluations
+    lane_positions = metrics.lane_verdicts
+    paired_bit_positions = metrics.bit_positions
     bit_exact_cases = sum(
         case.comparison["mode"] == "bit_exact" for case in ordered_cases
     )

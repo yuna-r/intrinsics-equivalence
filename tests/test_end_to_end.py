@@ -60,7 +60,7 @@ class EndToEndTests(unittest.TestCase):
             assert isinstance(result, dict)
             self.assertEqual(result["status"], "pass")
             self.assertFalse(result["native_evidence"])
-            self.assertEqual(result["record_count"], 96)
+            self.assertEqual(result["record_count"], 192)
             self.assertTrue((output / "comparison" / "summary.json").is_file())
             self.assertEqual(result["showcase_report"], str(output / "showcase.html"))
             showcase = (output / "showcase.html").read_text(encoding="utf-8")
@@ -74,7 +74,43 @@ class EndToEndTests(unittest.TestCase):
             self.assertIn("[4/7] Run OpenPOWER fixture: done", progress)
             self.assertIn("[5/7] Validate + compare results: done", progress)
             self.assertIn("[6/7] Build showcase report: done", progress)
-            self.assertIn("[7/7] PASS - 96 trials: done", progress)
+            self.assertIn("[7/7] PASS - 192 trials: done", progress)
+            self.assertIn("Verification metrics", progress)
+            self.assertRegex(progress, r"cases\s+96")
+            self.assertRegex(progress, r"trials\s+192")
+            self.assertRegex(progress, r"implementation-path evaluations\s+384")
+            self.assertRegex(progress, r"lane verdicts\s+1,188")
+            self.assertRegex(progress, r"bit positions\s+24,192")
+            self.assertRegex(progress, r"match rate\s+100%")
+            self.assertRegex(progress, r"mismatch\s+0")
+
+    def test_check_prints_metrics_without_showcase_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "plain-check"
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                exit_code = main(
+                    [
+                        "check",
+                        "--project", str(PROJECT / "ioitf.toml"),
+                        "--output", str(output),
+                        "--count-per-case", "1",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            result = loads(stdout.getvalue().strip())
+            assert isinstance(result, dict)
+            self.assertNotIn("showcase_report", result)
+            metrics = stderr.getvalue()
+            self.assertIn("Verification metrics", metrics)
+            self.assertRegex(metrics, r"cases\s+96")
+            self.assertRegex(metrics, r"trials\s+96")
+            self.assertRegex(metrics, r"implementation-path evaluations\s+192")
+            self.assertRegex(metrics, r"lane verdicts\s+594")
+            self.assertRegex(metrics, r"bit positions\s+12,096")
+            self.assertRegex(metrics, r"match rate\s+100%")
+            self.assertRegex(metrics, r"mismatch\s+0")
 
     def test_check_quiet_keeps_stderr_empty_and_stdout_canonical(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
