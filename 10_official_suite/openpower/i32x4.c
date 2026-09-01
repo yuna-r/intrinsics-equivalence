@@ -1,102 +1,82 @@
 #include <altivec.h>
 
-typedef __vector signed int example_i32x4;
-typedef __vector unsigned int example_u32x4;
+typedef __vector signed int i32x4;
+typedef __vector unsigned int u32x4;
 
-example_u32x4 openpower_example_add_i32x4(example_u32x4 a,
-                                         example_u32x4 b)
+u32x4 power_add_i32x4(u32x4 a, u32x4 b)
 {
     return a + b;
 }
 
-example_u32x4 openpower_example_sub_i32x4(example_u32x4 a,
-                                         example_u32x4 b)
+u32x4 power_sub_i32x4(u32x4 a, u32x4 b)
 {
     return a - b;
 }
 
-example_u32x4 openpower_example_and_i32x4(example_u32x4 a,
-                                         example_u32x4 b)
+u32x4 power_and_i32x4(u32x4 a, u32x4 b)
 {
     return a & b;
 }
 
-example_u32x4 openpower_example_or_i32x4(example_u32x4 a,
-                                        example_u32x4 b)
+u32x4 power_or_i32x4(u32x4 a, u32x4 b)
 {
     return a | b;
 }
 
-example_u32x4 openpower_example_xor_i32x4(example_u32x4 a,
-                                         example_u32x4 b)
+u32x4 power_xor_i32x4(u32x4 a, u32x4 b)
 {
     return a ^ b;
 }
 
-example_u32x4 openpower_example_andnot_i32x4(example_u32x4 a,
-                                            example_u32x4 b)
+u32x4 power_andnot_i32x4(u32x4 a, u32x4 b)
 {
     return (~a) & b;
 }
 
-example_u32x4 openpower_example_cmpeq_i32x4(example_u32x4 a,
-                                           example_u32x4 b)
+u32x4 power_cmpeq_i32x4(u32x4 a, u32x4 b)
 {
-    return (example_u32x4)vec_cmpeq(a, b);
+    return (u32x4)vec_cmpeq(a, b);
 }
 
-example_u32x4 openpower_example_cmpgt_i32x4(example_u32x4 a,
-                                           example_u32x4 b)
+u32x4 power_cmpgt_i32x4(u32x4 a, u32x4 b)
 {
-    return (example_u32x4)vec_cmpgt((example_i32x4)a,
-                                    (example_i32x4)b);
+    return (u32x4)vec_cmpgt((i32x4)a, (i32x4)b);
 }
 
-example_u32x4 openpower_example_slli_i32x4(example_u32x4 value,
-                                           unsigned int immediate)
+u32x4 power_slli_i32x4(u32x4 v, unsigned imm)
 {
-    if (immediate > 31U) {
+    if (imm > 31U) {
         return vec_splats(0U);
     }
-    return vec_sl(value, vec_splats(immediate));
+    return vec_sl(v, vec_splats(imm));
 }
 
-example_u32x4 openpower_example_srli_i32x4(example_u32x4 value,
-                                           unsigned int immediate)
+u32x4 power_srli_i32x4(u32x4 v, unsigned imm)
 {
-    if (immediate > 31U) {
+    if (imm > 31U) {
         return vec_splats(0U);
     }
-    return vec_sr(value, vec_splats(immediate));
+    return vec_sr(v, vec_splats(imm));
 }
 
-example_u32x4 openpower_example_srai_i32x4(example_u32x4 value,
-                                           unsigned int immediate)
+u32x4 power_srai_i32x4(u32x4 v, unsigned imm)
 {
-    unsigned int count = immediate > 31U ? 31U : immediate;
-    return (example_u32x4)vec_sra((example_i32x4)value,
-                                  vec_splats(count));
+    unsigned n = imm > 31U ? 31U : imm;
+    return (u32x4)vec_sra((i32x4)v, vec_splats(n));
 }
 
-example_u32x4 openpower_example_shuffle_i32x4(example_u32x4 value,
-                                              unsigned int immediate)
+u32x4 power_shuffle_i32x4(u32x4 v, unsigned imm)
 {
-    return (example_u32x4){
-        value[(immediate >> 0) & 3U],
-        value[(immediate >> 2) & 3U],
-        value[(immediate >> 4) & 3U],
-        value[(immediate >> 6) & 3U]
-    };
+    return (u32x4){v[(imm >> 0) & 3U], v[(imm >> 2) & 3U],
+                   v[(imm >> 4) & 3U], v[(imm >> 6) & 3U]};
 }
 
-example_u32x4 openpower_example_unpacklo_i32x4(example_u32x4 a,
-                                               example_u32x4 b)
+u32x4 power_unpacklo_i32x4(u32x4 a, u32x4 b)
 {
-    return (example_u32x4){a[0], b[0], a[1], b[1]};
+    return (u32x4){a[0], b[0], a[1], b[1]};
 }
 
-example_u32x4 openpower_example_unpackhi_i32x4(example_u32x4 a,
-                                               example_u32x4 b)
+u32x4 power_unpackhi_i32x4(u32x4 a, u32x4 b)
 {
-    return (example_u32x4){a[2], b[2], a[3], b[3]};
+    return (u32x4){a[2], b[2], a[3], b[3]};
 }

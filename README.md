@@ -13,7 +13,7 @@
 同じ入力から結果の違いを見つけます。中ではかなり厳密に記録しますが、普段使う
 コマンドは短くしてあります。
 
-現在は算術、論理、比較、shift、レーン操作を含む24ケースあります。
+現在は算術、飽和算術、論理、比較、shift、レーン操作を含む48ケースを収録しています。
 
 > ローカル比較に加え、Clangによるx86_64 / ppc64le objectのcross buildまで動きます。
 > 未実装なのはppc64le実機での実行と、結果をnative evidenceとして収集するrunnerです。
@@ -36,7 +36,7 @@ ioitf check
 最後に`"status":"pass"`が出れば成功です。
 
 ```json
-{"case_count":24,"record_count":192,"status":"pass"}
+{"case_count":48,"record_count":384,"status":"pass"}
 ```
 
 `ioitf check`ひとつで、caseの確認、入力生成、両側の実行、答え合わせまで進みます。
@@ -69,16 +69,19 @@ ioitf check --showcase-report
 ## IntelとOpenPOWERを見比べる
 
 Repositoryの一番上に来る[`10_official_suite/`](10_official_suite/)へ、
-24個のcontractと、Intel / OpenPOWERそれぞれの全24操作をまとめてあります。
+48個のcontractと、Intel / OpenPOWERそれぞれの全48操作をまとめてあります。
 
 | Intel Intrinsic | OpenPOWER / VSX |
 |---|---|
 | `_mm_add_pd(a, b)` | `vec_add(a, b)` |
+| `_mm_cmpeq_pd(a, b)` | lane comparison + all-bits mask |
+| `_mm_adds_epi16(a, b)` | `vec_adds(a, b)` |
+| `_mm_subs_epu8(a, b)` | `vec_subs(a, b)` |
 | `_mm_set1_pd(x)` | `vec_splats(x)` |
 | `_mm_shuffle_epi32(v, 27)` | `{v[3], v[2], v[1], v[0]}` |
 
 [`intel/`](10_official_suite/intel/)と[`openpower/`](10_official_suite/openpower/)を
-左右対称にし、どちらもf64とi32の2つの塊で置いてあります。
+左右対称にし、どちらもf64 / i8 / i16 / i32の4つの塊で置いてあります。
 
 Clangのcross buildも1コマンドです。
 
@@ -135,18 +138,26 @@ ctest --test-dir build/native --output-on-failure
 ここから先は、いま必要な項目だけどうぞ。
 
 <details>
-<summary><strong>収録している24ケース</strong></summary>
+<summary><strong>収録している48ケース</strong></summary>
 
 - f64 arithmetic: `_mm_add_pd`、`_mm_sub_pd`、`_mm_mul_pd`
 - f64 bit / lane: `_mm_and_pd`、`_mm_or_pd`、`_mm_xor_pd`、`_mm_set1_pd`、
   `_mm_move_sd`、`_mm_unpacklo_pd`、`_mm_unpackhi_pd`
+- f64 comparison: `_mm_cmpeq_pd`、`_mm_cmplt_pd`、`_mm_cmple_pd`、`_mm_cmpgt_pd`、
+  `_mm_cmpge_pd`、`_mm_cmpneq_pd`、`_mm_cmpord_pd`、`_mm_cmpunord_pd`
+- i8 arithmetic / saturation / comparison: `_mm_add_epi8`、`_mm_sub_epi8`、
+  `_mm_adds_epi8`、`_mm_adds_epu8`、`_mm_subs_epi8`、`_mm_subs_epu8`、
+  `_mm_cmpeq_epi8`、`_mm_cmpgt_epi8`
+- i16 arithmetic / saturation / comparison: `_mm_add_epi16`、`_mm_sub_epi16`、
+  `_mm_adds_epi16`、`_mm_adds_epu16`、`_mm_subs_epi16`、`_mm_subs_epu16`、
+  `_mm_cmpeq_epi16`、`_mm_cmpgt_epi16`
 - i32 arithmetic: `_mm_add_epi32`、`_mm_sub_epi32`
 - i32 logic: `_mm_and_si128`、`_mm_or_si128`、`_mm_xor_si128`、`_mm_andnot_si128`
 - i32 comparison: `_mm_cmpeq_epi32`、`_mm_cmpgt_epi32`
 - i32 shift: `_mm_slli_epi32`、`_mm_srli_epi32`、`_mm_srai_epi32`
 - i32 lane: `_mm_shuffle_epi32`、`_mm_unpacklo_epi32`、`_mm_unpackhi_epi32`
 
-24ケースすべてをdevelopment fixtureで確認できます。Native adapterの実装例があるのは
+48ケースすべてをdevelopment fixtureで確認できます。Native adapterの実装例があるのは
 現在、`_mm_add_pd`、`_mm_set1_pd`、`_mm_shuffle_epi32`の3ケースです。
 
 </details>
@@ -297,7 +308,7 @@ Frameworkとテストsuiteは分けてあります。
 
 ```text
 intrinsics-equivalence/
-├── 10_official_suite/     # 24 cases + Intel/OpenPOWER各24操作
+├── 10_official_suite/     # 48 cases + Intel/OpenPOWER各48操作
 ├── src/ioitf/             # CLIとartifact処理
 ├── adapters/              # native / portable adapter
 ├── contracts/             # ISA registry

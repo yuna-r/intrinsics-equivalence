@@ -1,63 +1,104 @@
 #include <altivec.h>
 
-typedef __vector double example_f64x2;
-typedef __vector unsigned long long example_u64x2;
+typedef __vector double f64x2;
+typedef __vector unsigned long long u64x2;
 
-example_f64x2 openpower_example_add_f64x2(example_f64x2 a,
-                                          example_f64x2 b)
+f64x2 power_add_f64x2(f64x2 a, f64x2 b)
 {
     return vec_add(a, b);
 }
 
-example_f64x2 openpower_example_sub_f64x2(example_f64x2 a,
-                                          example_f64x2 b)
+f64x2 power_sub_f64x2(f64x2 a, f64x2 b)
 {
     return vec_sub(a, b);
 }
 
-example_f64x2 openpower_example_mul_f64x2(example_f64x2 a,
-                                          example_f64x2 b)
+f64x2 power_mul_f64x2(f64x2 a, f64x2 b)
 {
     return vec_mul(a, b);
 }
 
-example_f64x2 openpower_example_and_f64x2(example_f64x2 a,
-                                          example_f64x2 b)
+f64x2 power_and_f64x2(f64x2 a, f64x2 b)
 {
-    return (example_f64x2)((example_u64x2)a & (example_u64x2)b);
+    return (f64x2)((u64x2)a & (u64x2)b);
 }
 
-example_f64x2 openpower_example_or_f64x2(example_f64x2 a,
-                                         example_f64x2 b)
+f64x2 power_or_f64x2(f64x2 a, f64x2 b)
 {
-    return (example_f64x2)((example_u64x2)a | (example_u64x2)b);
+    return (f64x2)((u64x2)a | (u64x2)b);
 }
 
-example_f64x2 openpower_example_xor_f64x2(example_f64x2 a,
-                                          example_f64x2 b)
+f64x2 power_xor_f64x2(f64x2 a, f64x2 b)
 {
-    return (example_f64x2)((example_u64x2)a ^ (example_u64x2)b);
+    return (f64x2)((u64x2)a ^ (u64x2)b);
 }
 
-example_f64x2 openpower_example_set1_f64x2(double value)
+f64x2 power_set1_f64x2(double x)
 {
-    return vec_splats(value);
+    return vec_splats(x);
 }
 
-example_f64x2 openpower_example_move_f64x2(example_f64x2 a,
-                                           example_f64x2 b)
+f64x2 power_move_f64x2(f64x2 a, f64x2 b)
 {
-    return (example_f64x2){b[0], a[1]};
+    return (f64x2){b[0], a[1]};
 }
 
-example_f64x2 openpower_example_unpacklo_f64x2(example_f64x2 a,
-                                               example_f64x2 b)
+f64x2 power_unpacklo_f64x2(f64x2 a, f64x2 b)
 {
-    return (example_f64x2){a[0], b[0]};
+    return (f64x2){a[0], b[0]};
 }
 
-example_f64x2 openpower_example_unpackhi_f64x2(example_f64x2 a,
-                                               example_f64x2 b)
+f64x2 power_unpackhi_f64x2(f64x2 a, f64x2 b)
 {
-    return (example_f64x2){a[1], b[1]};
+    return (f64x2){a[1], b[1]};
+}
+
+static unsigned long long mask(int yes)
+{
+    return yes ? ~0ULL : 0ULL;
+}
+
+static int ordered(double a, double b)
+{
+    return a == a && b == b;
+}
+
+f64x2 power_cmpeq_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(a[0] == b[0]), mask(a[1] == b[1])};
+}
+
+f64x2 power_cmplt_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(a[0] < b[0]), mask(a[1] < b[1])};
+}
+
+f64x2 power_cmple_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(a[0] <= b[0]), mask(a[1] <= b[1])};
+}
+
+f64x2 power_cmpgt_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(a[0] > b[0]), mask(a[1] > b[1])};
+}
+
+f64x2 power_cmpge_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(a[0] >= b[0]), mask(a[1] >= b[1])};
+}
+
+f64x2 power_cmpneq_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(a[0] != b[0]), mask(a[1] != b[1])};
+}
+
+f64x2 power_cmpord_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(ordered(a[0], b[0])), mask(ordered(a[1], b[1]))};
+}
+
+f64x2 power_cmpunord_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2)(u64x2){mask(!ordered(a[0], b[0])), mask(!ordered(a[1], b[1]))};
 }

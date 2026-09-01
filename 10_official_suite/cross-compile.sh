@@ -23,32 +23,22 @@ fi
 
 mkdir -p "$output_dir/intel" "$output_dir/openpower"
 
-"$compiler" \
-    --target=x86_64-unknown-linux-gnu \
-    -march=x86-64 -msse2 \
-    -Wall -Wextra -Wpedantic -Werror \
-    -c "$suite_dir/intel/f64x2.c" \
-    -o "$output_dir/intel/f64x2.o"
-"$compiler" \
-    --target=x86_64-unknown-linux-gnu \
-    -march=x86-64 -msse2 \
-    -Wall -Wextra -Wpedantic -Werror \
-    -c "$suite_dir/intel/i32x4.c" \
-    -o "$output_dir/intel/i32x4.o"
+for block in f64x2 i8x16 i16x8 i32x4; do
+    "$compiler" \
+        --target=x86_64-unknown-linux-gnu \
+        -march=x86-64 -msse2 \
+        -Wall -Wextra -Wpedantic -Werror \
+        -c "$suite_dir/intel/$block.c" \
+        -o "$output_dir/intel/$block.o"
 
-"$compiler" \
-    --target=powerpc64le-unknown-linux-gnu \
-    -mcpu=power8 -maltivec -mvsx \
-    -Wall -Wextra -Wpedantic -Werror \
-    -c "$suite_dir/openpower/f64x2.c" \
-    -o "$output_dir/openpower/f64x2.o"
-"$compiler" \
-    --target=powerpc64le-unknown-linux-gnu \
-    -mcpu=power8 -maltivec -mvsx \
-    -Wall -Wextra -Wpedantic -Werror \
-    -c "$suite_dir/openpower/i32x4.c" \
-    -o "$output_dir/openpower/i32x4.o"
+    "$compiler" \
+        --target=powerpc64le-unknown-linux-gnu \
+        -mcpu=power8 -maltivec -mvsx \
+        -Wall -Wextra -Wpedantic -Werror \
+        -c "$suite_dir/openpower/$block.c" \
+        -o "$output_dir/openpower/$block.o"
+done
 
 echo "Cross-compiled official suite:"
-file "$output_dir/intel/f64x2.o" "$output_dir/intel/i32x4.o"
-file "$output_dir/openpower/f64x2.o" "$output_dir/openpower/i32x4.o"
+file "$output_dir/intel/"*.o
+file "$output_dir/openpower/"*.o

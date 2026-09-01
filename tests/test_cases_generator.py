@@ -19,7 +19,7 @@ from ioitf.canonical import (  # noqa: E402
     sha256_file,
 )
 from ioitf.cases import load_case_definitions, validate_case_definition  # noqa: E402
-from ioitf.development import load_development_case  # noqa: E402
+from ioitf.development import load_development_case, vector  # noqa: E402
 from ioitf.errors import ValidationError  # noqa: E402
 from ioitf.generator import SplitMix64, generate_artifact  # noqa: E402
 from ioitf.isa import load_isa_registry, project_used_isa  # noqa: E402
@@ -39,12 +39,30 @@ class CaseAndGeneratorTests(unittest.TestCase):
             self.cases.ids,
             (
                 "sse2.add.f64x2.default",
+                "sse2.add.i16x8.default",
                 "sse2.add.i32x4.default",
+                "sse2.add.i8x16.default",
+                "sse2.adds.i16x8.default",
+                "sse2.adds.i8x16.default",
+                "sse2.adds.u16x8.default",
+                "sse2.adds.u8x16.default",
                 "sse2.and.f64x2.default",
                 "sse2.and.i32x4.default",
                 "sse2.andnot.i32x4.default",
+                "sse2.cmpeq.f64x2.default",
+                "sse2.cmpeq.i16x8.default",
                 "sse2.cmpeq.i32x4.default",
+                "sse2.cmpeq.i8x16.default",
+                "sse2.cmpge.f64x2.default",
+                "sse2.cmpgt.f64x2.default",
+                "sse2.cmpgt.i16x8.default",
                 "sse2.cmpgt.i32x4.default",
+                "sse2.cmpgt.i8x16.default",
+                "sse2.cmple.f64x2.default",
+                "sse2.cmplt.f64x2.default",
+                "sse2.cmpneq.f64x2.default",
+                "sse2.cmpord.f64x2.default",
+                "sse2.cmpunord.f64x2.default",
                 "sse2.move.f64x2.default",
                 "sse2.mul.f64x2.default",
                 "sse2.or.f64x2.default",
@@ -55,7 +73,13 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.srai.i32x4.imm8",
                 "sse2.srli.i32x4.imm8",
                 "sse2.sub.f64x2.default",
+                "sse2.sub.i16x8.default",
                 "sse2.sub.i32x4.default",
+                "sse2.sub.i8x16.default",
+                "sse2.subs.i16x8.default",
+                "sse2.subs.i8x16.default",
+                "sse2.subs.u16x8.default",
+                "sse2.subs.u8x16.default",
                 "sse2.unpackhi.f64x2.default",
                 "sse2.unpackhi.i32x4.default",
                 "sse2.unpacklo.f64x2.default",
@@ -76,6 +100,23 @@ class CaseAndGeneratorTests(unittest.TestCase):
             assert case.source_path is not None
             self.assertEqual(case.source_path.name, "case.yaml")
             self.assertTrue((case.source_path.parent / "development.py").is_file())
+
+    def test_vector_helper_formats_every_supported_lane_width(self) -> None:
+        expected = {
+            "f32": "0xffffffff",
+            "f64": "0xffffffffffffffff",
+            "i8": "0xff",
+            "i16": "0xffff",
+            "i32": "0xffffffff",
+            "i64": "0xffffffffffffffff",
+            "u8": "0xff",
+            "u16": "0xffff",
+            "u32": "0xffffffff",
+            "u64": "0xffffffffffffffff",
+        }
+        for element, lane in expected.items():
+            with self.subTest(element=element):
+                self.assertEqual(vector(element, (-1,))["lanes"], [lane])
 
     def test_yaml_rejects_duplicate_keys_aliases_and_non_json_scalars(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -134,7 +175,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 120)
+            self.assertEqual(first.record_count, 240)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -478,6 +519,124 @@ class CaseAndGeneratorTests(unittest.TestCase):
             with self.subTest(case_id=case_id):
                 actual = load_development_case(self.cases.get(case_id)).execute(record)
                 self.assertEqual(actual, {"return": {"element": "f64", "lanes": lanes}})
+
+    def test_f64_comparison_models_cover_ordered_unordered_and_signed_zero(self) -> None:
+        true = "0xffffffffffffffff"
+        false = "0x0000000000000000"
+        scenarios = (
+            (
+                ["0x0000000000000000", "0x4000000000000000"],
+                ["0x8000000000000000", "0x3ff0000000000000"],
+                {
+                    "cmpeq": [true, false],
+                    "cmplt": [false, false],
+                    "cmple": [true, false],
+                    "cmpgt": [false, true],
+                    "cmpge": [true, true],
+                    "cmpneq": [false, true],
+                    "cmpord": [true, true],
+                    "cmpunord": [false, false],
+                },
+            ),
+            (
+                ["0x7ff8000000000042", "0x3ff0000000000000"],
+                ["0x3ff0000000000000", "0x7ff0000000000001"],
+                {
+                    "cmpeq": [false, false],
+                    "cmplt": [false, false],
+                    "cmple": [false, false],
+                    "cmpgt": [false, false],
+                    "cmpge": [false, false],
+                    "cmpneq": [true, true],
+                    "cmpord": [false, false],
+                    "cmpunord": [true, true],
+                },
+            ),
+        )
+        for left, right, expected in scenarios:
+            record = {
+                "operands": {
+                    "a": {"element": "f64", "lanes": left},
+                    "b": {"element": "f64", "lanes": right},
+                }
+            }
+            for operation, lanes in expected.items():
+                case_id = f"sse2.{operation}.f64x2.default"
+                with self.subTest(case_id=case_id, left=left):
+                    actual = load_development_case(self.cases.get(case_id)).execute(record)
+                    self.assertEqual(
+                        actual, {"return": {"element": "f64", "lanes": lanes}}
+                    )
+
+    def test_i8_and_i16_models_cover_wrap_saturation_and_signed_compare(self) -> None:
+        specifications = (
+            {
+                "bits": 8,
+                "element": "i8",
+                "a": ["7f", "80", "ff", "00", "40", "c0", "7f", "80"] * 2,
+                "b": ["01", "ff", "01", "ff", "40", "c0", "80", "7f"] * 2,
+                "expected": {
+                    "add.i8x16": ("i8", ["80", "7f", "00", "ff", "80", "80", "ff", "ff"] * 2),
+                    "sub.i8x16": ("i8", ["7e", "81", "fe", "01", "00", "00", "ff", "01"] * 2),
+                    "adds.i8x16": ("i8", ["7f", "80", "00", "ff", "7f", "80", "ff", "ff"] * 2),
+                    "adds.u8x16": ("u8", ["80", "ff", "ff", "ff", "80", "ff", "ff", "ff"] * 2),
+                    "subs.i8x16": ("i8", ["7e", "81", "fe", "01", "00", "00", "7f", "80"] * 2),
+                    "subs.u8x16": ("u8", ["7e", "00", "fe", "00", "00", "00", "00", "01"] * 2),
+                    "cmpeq.i8x16": ("i8", ["00", "00", "00", "00", "ff", "ff", "00", "00"] * 2),
+                    "cmpgt.i8x16": ("i8", ["ff", "00", "00", "ff", "00", "00", "ff", "00"] * 2),
+                },
+            },
+            {
+                "bits": 16,
+                "element": "i16",
+                "a": ["7fff", "8000", "ffff", "0000", "4000", "c000", "7fff", "8000"],
+                "b": ["0001", "ffff", "0001", "ffff", "4000", "c000", "8000", "7fff"],
+                "expected": {
+                    "add.i16x8": ("i16", ["8000", "7fff", "0000", "ffff", "8000", "8000", "ffff", "ffff"]),
+                    "sub.i16x8": ("i16", ["7ffe", "8001", "fffe", "0001", "0000", "0000", "ffff", "0001"]),
+                    "adds.i16x8": ("i16", ["7fff", "8000", "0000", "ffff", "7fff", "8000", "ffff", "ffff"]),
+                    "adds.u16x8": ("u16", ["8000", "ffff", "ffff", "ffff", "8000", "ffff", "ffff", "ffff"]),
+                    "subs.i16x8": ("i16", ["7ffe", "8001", "fffe", "0001", "0000", "0000", "7fff", "8000"]),
+                    "subs.u16x8": ("u16", ["7ffe", "0000", "fffe", "0000", "0000", "0000", "0000", "0001"]),
+                    "cmpeq.i16x8": ("i16", ["0000", "0000", "0000", "0000", "ffff", "ffff", "0000", "0000"]),
+                    "cmpgt.i16x8": ("i16", ["ffff", "0000", "0000", "ffff", "0000", "0000", "ffff", "0000"]),
+                },
+            },
+        )
+        for specification in specifications:
+            width = specification["bits"] // 4
+            for suffix, (element, expected_lanes) in specification["expected"].items():
+                case_id = f"sse2.{suffix}.default"
+                operand_element = (
+                    element if element.startswith("u") else specification["element"]
+                )
+                record = {
+                    "operands": {
+                        "a": {
+                            "element": operand_element,
+                            "lanes": [
+                                f"0x{value}" for value in specification["a"]
+                            ],
+                        },
+                        "b": {
+                            "element": operand_element,
+                            "lanes": [
+                                f"0x{value}" for value in specification["b"]
+                            ],
+                        },
+                    }
+                }
+                expected = {
+                    "return": {
+                        "element": element,
+                        "lanes": [
+                            f"0x{int(value, 16):0{width}x}" for value in expected_lanes
+                        ],
+                    }
+                }
+                with self.subTest(case_id=case_id):
+                    actual = load_development_case(self.cases.get(case_id)).execute(record)
+                    self.assertEqual(actual, expected)
 
     def test_input_id_does_not_include_sequence_or_generation(self) -> None:
         record = {
