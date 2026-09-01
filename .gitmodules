@@ -1,0 +1,4 @@
+[submodule "docs"]
+	path = docs
+	url = https://github.com/yuna-r/ToukaSpecification.git
+	branch = docs/add-specifications

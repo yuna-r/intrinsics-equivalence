@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "tokens": [
+    {
+      "architecture": "ppc64le",
+      "detector": {"id": "linux.auxv.power8", "version": 1},
+      "implies": [],
+      "token": "power8"
+    },
+    {
+      "architecture": "x86_64",
+      "detector": {"id": "x86.cpuid.sse2", "version": 1},
+      "implies": [],
+      "token": "sse2"
+    },
+    {
+      "architecture": "ppc64le",
+      "detector": {"id": "linux.auxv.vsx", "version": 1},
+      "implies": ["power8"],
+      "token": "vsx"
+    }
+  ]
+}
+
