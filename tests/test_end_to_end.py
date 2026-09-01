@@ -58,7 +58,7 @@ class EndToEndTests(unittest.TestCase):
             assert isinstance(result, dict)
             self.assertEqual(result["status"], "pass")
             self.assertFalse(result["native_evidence"])
-            self.assertEqual(result["record_count"], 6)
+            self.assertEqual(result["record_count"], 12)
             self.assertTrue((output / "comparison" / "summary.json").is_file())
 
     def test_fixture_match_tamper_detection_and_failure_bundle(self) -> None:

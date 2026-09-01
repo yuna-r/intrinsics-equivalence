@@ -19,6 +19,7 @@ from ioitf.canonical import (  # noqa: E402
     sha256_file,
 )
 from ioitf.cases import load_case_definitions, validate_case_definition  # noqa: E402
+from ioitf.development import load_development_case  # noqa: E402
 from ioitf.errors import ValidationError  # noqa: E402
 from ioitf.generator import SplitMix64, generate_artifact  # noqa: E402
 from ioitf.isa import load_isa_registry, project_used_isa  # noqa: E402
@@ -38,8 +39,11 @@ class CaseAndGeneratorTests(unittest.TestCase):
             self.cases.ids,
             (
                 "sse2.add.f64x2.default",
+                "sse2.and.i32x4.default",
+                "sse2.mul.f64x2.default",
                 "sse2.set1.f64x2.default",
                 "sse2.shuffle.i32x4.imm8",
+                "sse2.sub.f64x2.default",
             ),
         )
         used = project_used_isa(self.isa, self.cases)
@@ -112,7 +116,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 15)
+            self.assertEqual(first.record_count, 30)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -128,6 +132,87 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 self.assertIsInstance(record, dict)
                 assert isinstance(record, dict)
                 self.assertEqual(record["input_id"], derive_input_id(record))
+
+    def test_added_case_models_have_known_results(self) -> None:
+        records = {
+            "sse2.sub.f64x2.default": {
+                "operands": {
+                    "a": {
+                        "element": "f64",
+                        "lanes": ["0x4024000000000000", "0xc010000000000000"],
+                    },
+                    "b": {
+                        "element": "f64",
+                        "lanes": ["0x4008000000000000", "0x4000000000000000"],
+                    },
+                }
+            },
+            "sse2.mul.f64x2.default": {
+                "operands": {
+                    "a": {
+                        "element": "f64",
+                        "lanes": ["0x4000000000000000", "0xc008000000000000"],
+                    },
+                    "b": {
+                        "element": "f64",
+                        "lanes": ["0x4010000000000000", "0x3fe0000000000000"],
+                    },
+                }
+            },
+            "sse2.and.i32x4.default": {
+                "operands": {
+                    "a": {
+                        "element": "i32",
+                        "lanes": [
+                            "0xffffffff",
+                            "0x0f0f0f0f",
+                            "0xaaaaaaaa",
+                            "0x80000000",
+                        ],
+                    },
+                    "b": {
+                        "element": "i32",
+                        "lanes": [
+                            "0x12345678",
+                            "0xf0f0f0f0",
+                            "0x55555555",
+                            "0xffffffff",
+                        ],
+                    },
+                }
+            },
+        }
+        expected = {
+            "sse2.sub.f64x2.default": {
+                "return": {
+                    "element": "f64",
+                    "lanes": ["0x401c000000000000", "0xc018000000000000"],
+                }
+            },
+            "sse2.mul.f64x2.default": {
+                "return": {
+                    "element": "f64",
+                    "lanes": ["0x4020000000000000", "0xbff8000000000000"],
+                }
+            },
+            "sse2.and.i32x4.default": {
+                "return": {
+                    "element": "i32",
+                    "lanes": [
+                        "0x12345678",
+                        "0x00000000",
+                        "0x00000000",
+                        "0x80000000",
+                    ],
+                }
+            },
+        }
+
+        for case_id, record in records.items():
+            with self.subTest(case_id=case_id):
+                case = self.cases.get(case_id)
+                actual = load_development_case(case).execute(record)
+                self.assertEqual(actual, expected[case_id])
 
     def test_input_id_does_not_include_sequence_or_generation(self) -> None:
         record = {
