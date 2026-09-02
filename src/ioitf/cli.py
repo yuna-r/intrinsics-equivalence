@@ -108,7 +108,7 @@ def _print_quality_metrics(
     bindings = metrics.cases * 2
     rows = [
         ("valid contracts", f"{metrics.valid_contracts:,} / {metrics.cases:,}"),
-        ("development models", f"{metrics.development_models:,} / {metrics.cases:,}"),
+        ("portable models", f"{metrics.development_models:,} / {metrics.cases:,}"),
         (
             "standard boundary floors",
             f"{metrics.standard_boundary_floors:,} / {metrics.cases:,}",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 import copy
 from pathlib import Path
@@ -592,13 +593,19 @@ def _case_values(path: Path) -> Iterator[tuple[JSONValue, str, Path]]:
                 item
                 for item in path.rglob("*")
                 if item.is_file()
-                and item.suffix.lower() in {".json", ".yaml", ".yml"}
+                and (
+                    item.suffix.lower() in {".json", ".yaml", ".yml"}
+                    or (
+                        item.suffix.lower() == ".py"
+                        and b"CASE_YAML" in item.read_bytes()
+                    )
+                )
                 and item.name != "isa-registry.json"
             ),
             key=lambda item: utf16_sort_key(item.as_posix()),
         )
         if not files:
-            raise ValidationError(f"{path}: no JSON or YAML case definitions found")
+            raise ValidationError(f"{path}: no JSON, YAML, or Python case definitions found")
         for file_path in files:
             yield from _case_values(file_path)
         return
@@ -608,6 +615,45 @@ def _case_values(path: Path) -> Iterator[tuple[JSONValue, str, Path]]:
         from .yamlio import load_yaml_file
 
         value = load_yaml_file(path)
+    elif path.suffix.lower() == ".py":
+        from .yamlio import load_yaml_text
+
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            raise ValidationError(f"cannot read {path}: {exc}") from exc
+        if raw.startswith(b"\xef\xbb\xbf"):
+            raise ValidationError(f"{path}: UTF-8 BOM is not allowed")
+        try:
+            source_text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValidationError(f"{path}: file is not valid UTF-8") from exc
+        try:
+            module = ast.parse(source_text, filename=str(path))
+        except SyntaxError as exc:
+            raise ValidationError(f"{path}: invalid Python: {exc}") from exc
+        declarations: list[ast.expr] = []
+        for statement in module.body:
+            if isinstance(statement, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == "CASE_YAML"
+                for target in statement.targets
+            ):
+                declarations.append(statement.value)
+            elif (
+                isinstance(statement, ast.AnnAssign)
+                and isinstance(statement.target, ast.Name)
+                and statement.target.id == "CASE_YAML"
+            ):
+                declarations.append(statement.value)
+        if (
+            len(declarations) != 1
+            or not isinstance(declarations[0], ast.Constant)
+            or not isinstance(declarations[0].value, str)
+        ):
+            raise ValidationError(
+                f"{path}: expected exactly one literal CASE_YAML string"
+            )
+        value = load_yaml_text(declarations[0].value, source=f"{path}:CASE_YAML")
     elif path.suffix.lower() == ".json":
         value = load_file(path)
     else:

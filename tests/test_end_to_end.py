@@ -92,7 +92,7 @@ class EndToEndTests(unittest.TestCase):
             self.assertRegex(progress, r"mismatch\s+0")
             self.assertIn("Quality metrics", progress)
             self.assertRegex(progress, r"valid contracts\s+146 / 146")
-            self.assertRegex(progress, r"development models\s+146 / 146")
+            self.assertRegex(progress, r"portable models\s+146 / 146")
             self.assertRegex(progress, r"architecture bindings\s+292 / 292")
 
     def test_check_prints_metrics_without_showcase_report(self) -> None:
@@ -621,7 +621,7 @@ class EndToEndTests(unittest.TestCase):
             atomic_write(case_path, dump_bytes(data, newline=True))
             source = self.cases.get(data["id"]).source_path
             assert source is not None
-            shutil.copyfile(source.parent / "development.py", root / "development.py")
+            shutil.copyfile(source, root / "development.py")
             registry = load_case_definitions(case_path, isa_registry=self.isa)
             generated = generate_artifact(
                 cases=registry,

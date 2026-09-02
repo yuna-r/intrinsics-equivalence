@@ -85,6 +85,28 @@ def _reject_merge_keys(value: Any, *, location: str = "$") -> None:
             _reject_merge_keys(item, location=f"{location}[{index}]")
 
 
+def load_yaml_text(text: str, *, source: str) -> JSONValue:
+    """Load one strict YAML document already embedded in another artifact."""
+    try:
+        for token in yaml.scan(text, Loader=_JSONSchemaLoader):
+            if isinstance(token, (AliasToken, AnchorToken)):
+                raise ValidationError(
+                    f"{source}: YAML anchors and aliases are not allowed"
+                )
+            if isinstance(token, TagToken):
+                raise ValidationError(f"{source}: explicit YAML tags are not allowed")
+            if isinstance(token, DirectiveToken):
+                raise ValidationError(f"{source}: YAML directives are not allowed")
+        value = yaml.load(text, Loader=_JSONSchemaLoader)
+        _reject_merge_keys(value)
+        validate_json_value(value)
+    except ValidationError:
+        raise
+    except yaml.YAMLError as exc:
+        raise ValidationError(f"{source}: invalid YAML: {exc}") from exc
+    return value
+
+
 def load_yaml_file(path: str | Path) -> JSONValue:
     """Load one strict YAML document into the canonical JSON data model."""
 
@@ -99,22 +121,4 @@ def load_yaml_file(path: str | Path) -> JSONValue:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ValidationError(f"{file_path}: file is not valid UTF-8") from exc
-
-    try:
-        for token in yaml.scan(text, Loader=_JSONSchemaLoader):
-            if isinstance(token, (AliasToken, AnchorToken)):
-                raise ValidationError(
-                    f"{file_path}: YAML anchors and aliases are not allowed"
-                )
-            if isinstance(token, TagToken):
-                raise ValidationError(f"{file_path}: explicit YAML tags are not allowed")
-            if isinstance(token, DirectiveToken):
-                raise ValidationError(f"{file_path}: YAML directives are not allowed")
-        value = yaml.load(text, Loader=_JSONSchemaLoader)
-        _reject_merge_keys(value)
-        validate_json_value(value)
-    except ValidationError:
-        raise
-    except yaml.YAMLError as exc:
-        raise ValidationError(f"{file_path}: invalid YAML: {exc}") from exc
-    return value
+    return load_yaml_text(text, source=str(file_path))

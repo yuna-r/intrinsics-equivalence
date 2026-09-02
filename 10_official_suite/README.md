@@ -14,9 +14,10 @@
 
 ```text
 10_official_suite/
-├── cases/       146個のequivalence contract
+├── cases/       146個の1-file case pack
 ├── intel/       SSE2による全146操作
 ├── openpower/   VSXによる全146操作
+├── new-case     case packを1ファイル作るscaffold
 └── shortcuts.h  単純なnative wrapperを1行にするmacro
 ```
 
@@ -32,7 +33,8 @@
 
 - [`cases/`](cases/)は入力生成、比較方法、両architectureのsymbolをまとめたcase packです。
 - [`intel/`](intel/)と[`openpower/`](openpower/)は、両側の中心部分を同じ粒度で見せます。
-- 単純な2項演算は`binary_case(..., "i32x4", "+", ...)`のような短い共通部品で書けます。
+- 全146ケースが`cases/*.py`へ平らに並びます。YAML contractと短いfamily宣言で1ケースです。
+- `./10_official_suite/new-case demo-add-i32x4 +`でユーザーcaseの雛形を作れます。
 - 実際に証拠を生成するadapterは[`../adapters/`](../adapters/)にあります。
 
 ## Clang cross build

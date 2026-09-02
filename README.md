@@ -74,12 +74,12 @@ Verification metrics
 この表もstderrへ出るため、stdoutの最終JSONは従来どおり1行のままです。
 
 続けて、通常実行では負荷の軽い品質メトリクスだけを表示します。すでに読み込んだ
-contractとdevelopment modelから集計するため、追加のbuildやtest実行はありません。
+contractとportable modelから集計するため、追加のbuildやtest実行はありません。
 
 ```text
 Quality metrics
   valid contracts              146 / 146
-  development models           146 / 146
+  portable models              146 / 146
   standard boundary floors     146 / 146
   architecture bindings        292 / 292
   contract drift                       0
@@ -173,31 +173,30 @@ x86-64 ELFとOpenPOWER ELF V2 ABIのppc64le objectを同時に生成します。
 
 ## ケースをひとつ増やす
 
-似ている短いケースをコピーします。
+よくあるinteger vectorの2項演算なら、1コマンドで雛形を作れます。
 
 ```sh
-cp -R 10_official_suite/cases/add-i32x4 10_official_suite/cases/my-new-case
+./10_official_suite/new-case my-new-i32x4 +
 ```
 
-1ケースは、この小さな塊だけです。
+1ケースは、この1ファイルだけです。
 
 ```text
-my-new-case/
-├── case.yaml       # 名前、型、比較方法
-└── development.py  # 入力と期待動作
+10_official_suite/cases/my-new-i32x4.py
 ```
 
-2ファイルを直したら、いつものコマンドを実行します。
+既存ファイルは上書きしません。生成されたファイルを直したら、いつものコマンドを
+実行します。上半分はYAMLのcontract、末尾は短いmodel宣言です。
 
-単純なvector演算の`development.py`は、境界値とこの1行が中心です。
+model部分はcase ID、型、演算だけを宣言します。
 
 ```python
 CASE_ID, MINIMUM_COUNTS, candidates, execute = binary_case(
-    "sse2.my-new.i32x4.default", "i32x4", "+", EXAMPLES, standard=8,
-)
+    "sse2.my-new.i32x4.default", "i32x4", "+", standard=8)
 ```
 
-共通の乱数生成やlane処理は見えません。特殊な意味があるcaseだけ普通のPythonで書けます。
+共通の境界値、乱数生成、lane処理は見えません。変換、比較、shuffle、packにも
+同じ粒度のfamilyがあり、公式146ケースはすべてこの形に揃っています。
 
 ```sh
 ioitf check
@@ -263,19 +262,21 @@ ctest --test-dir build/native --output-on-failure
   `_mm_move_epi64`、`_mm_cvtsi64_si128`、`_mm_set1_epi64x`、vector-count shift ×2、
   low-lane extract、set
 
-146ケースすべてをdevelopment fixtureで確認できます。Native adapterの実装例があるのは
-現在、`_mm_add_pd`、`_mm_set1_pd`、`_mm_shuffle_epi32`の3ケースです。
+146ケースすべてをportable fixtureで確認でき、公式Intel/OpenPOWER sourceにも
+全146操作が揃っています。
 
 </details>
 
 <details>
-<summary><strong>case.yamlとdevelopment.pyの書き方</strong></summary>
+<summary><strong>1ファイルcase packの書き方</strong></summary>
 
-### `case.yaml`
+### `CASE_YAML`
 
-case ID、引数、戻り値、必要ISA、比較方法を書きます。
+Pythonファイルの先頭へ、case ID、引数、戻り値、必要ISA、比較方法を書きます。
+これは文字列ですが、普通のYAMLとして読めます。
 
-```yaml
+```python
+CASE_YAML = """
 schema_version: 1
 id: sse2.add.f64x2.default
 description: two-lane IEEE 754 binary64 addition
@@ -300,30 +301,18 @@ environment:
   fp_rounding_modes: [nearest_even]
   observe_fp_exceptions: false
 tags: []
+"""
+
+from ioitf.casepack_families import float_binary_case
+
+
+CASE_ID, MINIMUM_COUNTS, candidates, execute = float_binary_case(
+    "sse2.add.f64x2.default", "f64x2", "+")
 ```
 
-### `development.py`
-
-`candidates()`と`execute()`を同じファイルへ置きます。
-
-```python
-CASE_ID = "sse2.add.f64x2.default"
-MINIMUM_COUNTS = {"standard": 10}
-
-def candidates(case, *, seed_text):
-    # 境界値や典型値を先にyieldし、その後に決定的なrandom入力を続ける
-    yield {
-        "environment": {"fp_mode": "ieee", "rounding": "nearest_even"},
-        "generation": {"class": "structured"},
-        "operands": {...},
-    }
-
-def execute(record):
-    # development fixtureが使う、CPUに依存しない期待動作
-    return {"return": {...}}
-```
-
-`ioitf`が隣り合う2ファイルを自動で見つけます。
+`ioitf`は`CASE_YAML`をPythonのASTから静的に読み、contractの検証中にはmodelを
+実行しません。入力生成が必要になった段階だけ同じファイルのmodel部分を読み込みます。
+従来の`case.yaml + model.py`と旧名`development.py`も互換目的で読み込めます。
 
 ### 浮動小数点は文字列にする
 
@@ -340,7 +329,7 @@ abs_tolerance: "0.001"
 rel_tolerance: "0"
 ```
 
-具体的なf32/f64入力は`development.py`でIEEE 754の32/64-bit値として生成します。
+具体的なf32/f64入力はcase pack末尾の共通familyでIEEE 754の32/64-bit値として生成します。
 `NaN`、無限大、`-0.0`もbit表現のまま扱えるため、値やNaN payloadを失いません。
 
 YAMLではほかにanchor、alias、merge key、明示tag、重複keyも受け付けません。
@@ -351,7 +340,7 @@ JSON形式のcaseも読み込めます。
 <details>
 <summary><strong>実機で動くcaseへ育てる</strong></summary>
 
-ローカル開発だけならcase packの2ファイルで動きます。実機検証へ進める場合は、
+ローカル開発だけならcase packの1ファイルで動きます。実機検証へ進める場合は、
 対象に応じて次を追加します。
 
 - `adapters/intel/`: Intel Intrinsicを呼ぶ実装

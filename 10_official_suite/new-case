@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Create a tiny binary-operation case pack without touching existing files."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import re
+
+
+OPERATIONS = (
+    "+", "-", "&", "|", "^", "~&", "==", ">", "<", "sat+", "sat-",
+    "avg", "min", "max", "*lo", "*hi",
+)
+NAME = re.compile(r"^[a-z][a-z0-9-]*-([iu](8|16|32|64)x([1-9][0-9]*))$")
+
+
+def parser() -> argparse.ArgumentParser:
+    command = argparse.ArgumentParser(
+        description="Add a compact integer-vector case to 10_official_suite/cases.",
+    )
+    command.add_argument("name", help="file stem ending in a shape, e.g. demo-add-i32x4")
+    command.add_argument("operation", choices=OPERATIONS, help="binary_case operation token")
+    command.add_argument(
+        "--into",
+        type=Path,
+        default=Path(__file__).resolve().parent / "cases",
+        help=argparse.SUPPRESS,
+    )
+    return command
+
+
+def main() -> int:
+    command = parser()
+    arguments = command.parse_args()
+    match = NAME.fullmatch(arguments.name)
+    if match is None:
+        command.error("name must end in an integer vector shape such as -i32x4")
+    shape, _width, lane_text = match.groups()
+    element = shape.rsplit("x", 1)[0]
+    stem = arguments.name[: -(len(shape) + 1)]
+    case_id = f"sse2.{stem.replace('-', '.')}.{shape}.default"
+    symbol = arguments.name.replace("-", "_")
+    target = arguments.into.resolve() / f"{arguments.name}.py"
+    if target.exists():
+        command.error(f"refusing to overwrite existing file: {target}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    case_yaml = f"""schema_version: 1
+id: {case_id}
+description: user-added {arguments.operation} model for {shape}
+
+intel:
+  symbol: intel_{symbol}
+  required_isa: [sse2]
+
+openpower:
+  symbol: power_{symbol}
+  required_isa: [power8, vsx]
+
+signature:
+  arguments:
+    - {{name: a, type: vector, element: {element}, lanes: {lane_text}}}
+    - {{name: b, type: vector, element: {element}, lanes: {lane_text}}}
+  return: {{type: vector, element: {element}, lanes: {lane_text}}}
+
+input_domain:
+  exclude: []
+
+comparison:
+  mode: bit_exact
+
+environment:
+  fp_rounding_modes: [nearest_even]
+  observe_fp_exceptions: false
+
+tags: []
+"""
+    target.write_text(
+        f'''"""Case pack for {case_id}."""
+
+CASE_YAML = """
+{case_yaml.rstrip()}
+"""
+
+from ioitf.casepack_families import binary_case
+
+
+CASE_ID, MINIMUM_COUNTS, candidates, execute = binary_case(
+    "{case_id}", "{shape}", {arguments.operation!r}, standard=8
+)
+''',
+        encoding="utf-8",
+    )
+    print(f"created {target}")
+    print("next: add matching intel_*/power_* native symbols, then run ioitf check")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,38 @@
+"""Case pack for _mm_mul_epu32."""
+
+CASE_YAML = """
+schema_version: 1
+id: sse2.mul.u32x4.default
+description: multiply the low unsigned 32-bit lane in each 64-bit half into two 64-bit results
+
+intel:
+  symbol: intel_mm_mul_epu32
+  required_isa: [sse2]
+
+openpower:
+  symbol: power_mm_mul_epu32
+  required_isa: [power8, vsx]
+
+signature:
+  arguments:
+    - {name: a, type: vector, element: u32, lanes: 4}
+    - {name: b, type: vector, element: u32, lanes: 4}
+  return: {type: vector, element: u64, lanes: 2}
+
+input_domain:
+  exclude: []
+
+comparison:
+  mode: bit_exact
+
+environment:
+  fp_rounding_modes: [nearest_even]
+  observe_fp_exceptions: false
+
+tags: []
+"""
+
+from ioitf.casepack_families import reduce_case
+
+
+CASE_ID, MINIMUM_COUNTS, candidates, execute = reduce_case("sse2.mul.u32x4.default", "u32x4", "even*")

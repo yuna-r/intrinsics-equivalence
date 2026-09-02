@@ -193,12 +193,45 @@ class CaseAndGeneratorTests(unittest.TestCase):
             ["power8", "sse2", "vsx"],
         )
 
-    def test_case_contracts_are_yaml_case_packs(self) -> None:
+    def test_case_contracts_are_flat_python_case_packs(self) -> None:
         for case in self.cases:
             self.assertIsNotNone(case.source_path)
             assert case.source_path is not None
-            self.assertEqual(case.source_path.name, "case.yaml")
-            self.assertTrue((case.source_path.parent / "development.py").is_file())
+            self.assertEqual(case.source_path.suffix, ".py")
+            self.assertEqual(case.source_path.parent.name, "cases")
+
+    def test_python_contract_is_read_statically_before_its_model_runs(self) -> None:
+        source = PROJECT / "10_official_suite" / "cases" / "add-f32x4.py"
+        with tempfile.TemporaryDirectory() as temporary:
+            pack = Path(temporary) / "static-pack.py"
+            pack.write_text(
+                source.read_text(encoding="utf-8")
+                + '\nraise RuntimeError("model executed")\n',
+                encoding="utf-8",
+            )
+            registry = load_case_definitions(pack, isa_registry=self.isa)
+            case = registry.get("sse2.add.f32x4.default")
+            with self.assertRaisesRegex(ValidationError, "model executed"):
+                load_development_case(case)
+
+    def test_python_contract_requires_one_literal_case_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            pack = Path(temporary) / "dynamic-pack.py"
+            pack.write_text('CASE_YAML = "".join([])\n', encoding="utf-8")
+            with self.assertRaisesRegex(ValidationError, "literal CASE_YAML"):
+                load_case_definitions(pack, isa_registry=self.isa)
+
+    def test_legacy_yaml_and_model_pair_remains_readable(self) -> None:
+        source = PROJECT / "10_official_suite" / "cases" / "add-f32x4.py"
+        combined = source.read_text(encoding="utf-8")
+        case_yaml, model = combined.split('CASE_YAML = """', 1)[1].split('"""', 1)
+        with tempfile.TemporaryDirectory() as temporary:
+            pack = Path(temporary)
+            (pack / "case.yaml").write_text(case_yaml, encoding="utf-8")
+            (pack / "model.py").write_text(model.lstrip(), encoding="utf-8")
+            registry = load_case_definitions(pack, isa_registry=self.isa)
+            loaded = load_development_case(registry.get("sse2.add.f32x4.default"))
+            self.assertEqual(loaded.id, "sse2.add.f32x4.default")
 
     def test_vector_helper_formats_every_supported_lane_width(self) -> None:
         expected = {
@@ -282,9 +315,14 @@ class CaseAndGeneratorTests(unittest.TestCase):
 
             original = self.cases.get("sse2.set1.f64x2.default").source_path
             assert original is not None
+            case_yaml = (
+                original.read_text(encoding="utf-8")
+                .split('CASE_YAML = """', 1)[1]
+                .split('"""', 1)[0]
+            )
             non_json_bool = root / "non-json-bool.yaml"
             non_json_bool.write_text(
-                original.read_text(encoding="utf-8").replace(
+                case_yaml.replace(
                     "observe_fp_exceptions: false", "observe_fp_exceptions: yes"
                 ),
                 encoding="utf-8",
@@ -294,9 +332,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
 
             float_number = root / "float.yaml"
             float_number.write_text(
-                original.read_text(encoding="utf-8").replace(
-                    "schema_version: 1", "schema_version: 1.0"
-                ),
+                case_yaml.replace("schema_version: 1", "schema_version: 1.0"),
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValidationError, "floating-point"):
@@ -1667,7 +1703,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
             atomic_write(case_path, dump_bytes(data, newline=True))
             source = self.cases.get(data["id"]).source_path
             assert source is not None
-            shutil.copyfile(source.parent / "development.py", root / "development.py")
+            shutil.copyfile(source, root / "development.py")
             registry = load_case_definitions(case_path, isa_registry=self.isa)
             generated = generate_artifact(
                 cases=registry,
@@ -1733,7 +1769,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
             atomic_write(case_path, dump_bytes(data, newline=True))
             source = self.cases.get(data["id"]).source_path
             assert source is not None
-            shutil.copyfile(source.parent / "development.py", root / "development.py")
+            shutil.copyfile(source, root / "development.py")
             registry = load_case_definitions(case_path, isa_registry=self.isa)
             with self.assertRaisesRegex(ValidationError, "mandatory regressions"):
                 generate_artifact(

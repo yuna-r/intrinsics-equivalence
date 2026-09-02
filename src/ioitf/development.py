@@ -1,9 +1,8 @@
-"""Development case-pack API shared by vector generation and fixtures.
+"""Portable case-model API shared by vector generation and fixtures.
 
-Normative contracts stay in ``case.yaml``.  The neighboring
-``development.py`` keeps the non-native input generator and executable model
-for that one case together, so adding a case does not require editing central
-dispatch tables.
+New case packs keep their normative ``CASE_YAML`` and executable model in one
+Python file.  Neighboring ``model.py`` and legacy ``development.py`` packs
+remain readable.
 """
 
 from __future__ import annotations
@@ -111,32 +110,39 @@ def _module_from_path(path: Path) -> ModuleType:
         exec(compile(source, str(path), "exec"), module.__dict__)
     except Exception as exc:
         sys.modules.pop(module_name, None)
-        raise ValidationError(f"cannot load development case pack {path}: {exc}") from exc
+        raise ValidationError(f"cannot load portable case model {path}: {exc}") from exc
     return module
 
 
 def load_development_case(case: CaseDefinition) -> DevelopmentCase:
-    """Load the development behavior next to a case's normative contract."""
+    """Load a combined case pack or a model next to its contract."""
 
     if case.source_path is None:
         loaded = _LOADED_BY_ID.get(case.id)
         if loaded is not None:
             return loaded
-        raise UnsupportedError(f"case {case.id!r} has no development case pack")
-    path = case.source_path.parent / "development.py"
+        raise UnsupportedError(f"case {case.id!r} has no portable model")
+    if case.source_path.suffix.lower() == ".py":
+        path = case.source_path
+    else:
+        model_path = case.source_path.parent / "model.py"
+        legacy_path = case.source_path.parent / "development.py"
+        if model_path.is_file() and legacy_path.is_file():
+            raise ValidationError(
+                f"case {case.id!r} has both model.py and legacy development.py"
+            )
+        path = model_path if model_path.is_file() else legacy_path
     if not path.is_file():
         loaded = _LOADED_BY_ID.get(case.id)
         if loaded is not None:
             return loaded
-        raise UnsupportedError(
-            f"case {case.id!r} has no neighboring development.py"
-        )
+        raise UnsupportedError(f"case {case.id!r} has no portable model")
     resolved = path.resolve()
     cached = _CACHE.get(resolved)
     if cached is not None:
         if cached.id != case.id:
             raise ValidationError(
-                f"development case pack {path} declares {cached.id!r}, expected {case.id!r}"
+                f"portable case model {path} declares {cached.id!r}, expected {case.id!r}"
             )
         _LOADED_BY_ID[case.id] = cached
         return cached
@@ -167,7 +173,7 @@ def load_development_case(case: CaseDefinition) -> DevelopmentCase:
     pack = DevelopmentCase(case_id, candidates, execute, minimum_counts, resolved)
     if pack.id != case.id:
         raise ValidationError(
-            f"development case pack {path} declares {pack.id!r}, expected {case.id!r}"
+            f"portable case model {path} declares {pack.id!r}, expected {case.id!r}"
         )
     _CACHE[resolved] = pack
     _LOADED_BY_ID[case.id] = pack
