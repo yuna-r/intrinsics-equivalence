@@ -7,6 +7,7 @@ from contextlib import contextmanager, redirect_stdout
 import copy
 from datetime import datetime, timezone
 import io
+import os
 from pathlib import Path
 import sys
 import time
@@ -38,6 +39,18 @@ from .quality import (
     run_quality_gates,
 )
 from .records import derive_input_id
+
+
+def _parse_jobs(value: str) -> int:
+    if value == "auto":
+        return max(1, os.cpu_count() or 1)
+    try:
+        jobs = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("jobs must be a positive integer or 'auto'") from exc
+    if jobs < 1:
+        raise argparse.ArgumentTypeError("jobs must be at least 1")
+    return jobs
 
 
 def _contract_paths(args: argparse.Namespace) -> tuple[Path, Path]:
@@ -322,6 +335,7 @@ def _generate_vectors(args: argparse.Namespace) -> int:
         profile=args.profile,
         count_per_case=args.count_per_case,
         seed=args.seed,
+        jobs=args.jobs,
     )
     _print(
         {
@@ -389,6 +403,7 @@ def _fixture_run(args: argparse.Namespace) -> int:
         isa_registry=isa,
         role=args.role,
         output=args.output,
+        jobs=args.jobs,
     )
     try:
         validated = validate_result_artifact(
@@ -515,23 +530,27 @@ def _reference_oracle_check(
 
 def _compare_results(args: argparse.Namespace) -> int:
     from .artifacts import validate_input_artifact, validate_result_artifact
-    from .compare import compare_result_records
+    from .compare import compare_result_record_set
     from .report import RecordReport, write_failure_bundle, write_reports
 
-    cases, isa = _contracts(args)
-    input_artifact = validate_input_artifact(args.input, cases, isa)
-    try:
-        intel_artifact = validate_result_artifact(
-            args.intel, cases, isa, input_artifact=input_artifact
-        )
-    except ValidationError as exc:
-        raise RunnerError(f"invalid Intel result artifact: {exc}") from exc
-    try:
-        power_artifact = validate_result_artifact(
-            args.openpower, cases, isa, input_artifact=input_artifact
-        )
-    except ValidationError as exc:
-        raise RunnerError(f"invalid OpenPOWER result artifact: {exc}") from exc
+    validated_context = getattr(args, "validated_context", None)
+    if validated_context is None:
+        cases, isa = _contracts(args)
+        input_artifact = validate_input_artifact(args.input, cases, isa)
+        try:
+            intel_artifact = validate_result_artifact(
+                args.intel, cases, isa, input_artifact=input_artifact
+            )
+        except ValidationError as exc:
+            raise RunnerError(f"invalid Intel result artifact: {exc}") from exc
+        try:
+            power_artifact = validate_result_artifact(
+                args.openpower, cases, isa, input_artifact=input_artifact
+            )
+        except ValidationError as exc:
+            raise RunnerError(f"invalid OpenPOWER result artifact: {exc}") from exc
+    else:
+        cases, isa, input_artifact, intel_artifact, power_artifact = validated_context
     if intel_artifact.role != "intel" or power_artifact.role != "openpower":
         raise ValidationError("result artifact roles do not match their command arguments")
     if (
@@ -556,7 +575,15 @@ def _compare_results(args: argparse.Namespace) -> int:
     reports: list[RecordReport] = []
     saw_unsupported = False
     progress = getattr(args, "progress", None)
-    for record_number, input_record in enumerate(input_artifact.records, 1):
+    comparisons = compare_result_record_set(
+        cases=cases,
+        input_records=input_artifact.records,
+        intel_records=intel_artifact.records,
+        openpower_records=power_artifact.records,
+        jobs=getattr(args, "jobs", 1),
+        progress=progress,
+    )
+    for input_record, comparison in zip(input_artifact.records, comparisons):
         input_id = str(input_record["input_id"])
         intel_record = intel_artifact.records[input_id]
         power_record = power_artifact.records[input_id]
@@ -565,13 +592,6 @@ def _compare_results(args: argparse.Namespace) -> int:
             or power_record["status"] == "unsupported"
         )
         case = cases.get(str(input_record["case_id"]))
-        comparison = compare_result_records(
-            case,
-            input_record,
-            intel_record,
-            power_record,
-            validate=False,
-        )
         failure_path: str | None = None
         if comparison.outcome == "mismatch":
             bundle = write_failure_bundle(
@@ -586,8 +606,6 @@ def _compare_results(args: argparse.Namespace) -> int:
             )
             failure_path = str(bundle.relative_to(output) / "failure.json")
         reports.append(RecordReport(case.id, input_id, comparison, failure_path))
-        if progress is not None:
-            progress(record_number)
 
     files = write_reports(output, reports)
     mismatch_count = sum(item.comparison.outcome == "mismatch" for item in reports)
@@ -687,7 +705,6 @@ def _verify_replay(args: argparse.Namespace) -> int:
 def _development_check(args: argparse.Namespace) -> int:
     """Run the complete non-native authoring loop with one command."""
 
-    from .artifacts import validate_input_artifact, validate_result_artifact
     from .fixture import run_fixture
 
     started_at = datetime.now(timezone.utc)
@@ -724,9 +741,11 @@ def _development_check(args: argparse.Namespace) -> int:
             profile=args.profile,
             count_per_case=args.count_per_case,
             seed=args.seed,
+            jobs=args.jobs,
             progress=update,
+            retain_records=True,
         )
-        inputs = validate_input_artifact(generated.manifest_path, cases, isa)
+        inputs = generated.as_validated_artifact()
 
     with progress.stage(
         3, "Run Intel fixture", total=generated.record_count
@@ -737,11 +756,10 @@ def _development_check(args: argparse.Namespace) -> int:
             isa_registry=isa,
             role="intel",
             output=output / "intel",
+            jobs=args.jobs,
             progress=update,
         )
-        validate_result_artifact(
-            intel.manifest_path, cases, isa, input_artifact=inputs
-        )
+        intel_artifact = intel.as_validated_artifact()
 
     with progress.stage(
         4, "Run OpenPOWER fixture", total=generated.record_count
@@ -752,11 +770,10 @@ def _development_check(args: argparse.Namespace) -> int:
             isa_registry=isa,
             role="openpower",
             output=output / "openpower",
+            jobs=args.jobs,
             progress=update,
         )
-        validate_result_artifact(
-            openpower.manifest_path, cases, isa, input_artifact=inputs
-        )
+        openpower_artifact = openpower.as_validated_artifact()
 
     comparison = output / "comparison"
     with progress.stage(
@@ -771,6 +788,14 @@ def _development_check(args: argparse.Namespace) -> int:
             openpower=openpower.manifest_path,
             output=comparison,
             progress=update,
+            jobs=args.jobs,
+            validated_context=(
+                cases,
+                isa,
+                inputs,
+                intel_artifact,
+                openpower_artifact,
+            ),
         )
         with redirect_stdout(io.StringIO()):
             exit_code = _compare_results(compare_args)
@@ -788,6 +813,7 @@ def _development_check(args: argparse.Namespace) -> int:
             "artifacts": str(output),
             "case_count": len(cases),
             "development_fixture": True,
+            "jobs": args.jobs,
             "native_evidence": False,
             "record_count": generated.record_count,
             "status": summary["outcome"],
@@ -824,6 +850,7 @@ def _development_check(args: argparse.Namespace) -> int:
                 quality_run = run_quality_gates(
                     project_root,
                     output / "quality",
+                    jobs=args.jobs,
                     progress=gate_progress.update,
                 )
             finally:
@@ -880,6 +907,13 @@ def _parser() -> argparse.ArgumentParser:
     check.add_argument("--count-per-case", type=int, default=8)
     check.add_argument("--seed", default=DEFAULT_SEED)
     check.add_argument(
+        "-j",
+        "--jobs",
+        default=1,
+        type=_parse_jobs,
+        help="case-level worker processes (positive integer or 'auto')",
+    )
+    check.add_argument(
         "--showcase-report",
         action="store_true",
         help="write a self-contained presentation-style HTML report",
@@ -910,6 +944,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     generate.add_argument("--count-per-case", type=int)
     generate.add_argument("--seed", default=DEFAULT_SEED)
+    generate.add_argument(
+        "-j", "--jobs", default=1, type=_parse_jobs,
+        help="case-level worker processes (positive integer or 'auto')",
+    )
     generate.set_defaults(handler=_generate_vectors)
 
     validate = subcommands.add_parser("validate-artifact")
@@ -925,6 +963,10 @@ def _parser() -> argparse.ArgumentParser:
     fixture.add_argument("--role", choices=("intel", "openpower"), required=True)
     fixture.add_argument("--output", required=True, type=Path)
     fixture.add_argument(
+        "-j", "--jobs", default=1, type=_parse_jobs,
+        help="case-level worker processes (positive integer or 'auto')",
+    )
+    fixture.add_argument(
         "--i-understand-this-is-not-native-evidence",
         action="store_true",
         dest="i_understand_this_is_not_native_evidence",
@@ -937,6 +979,10 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument("--intel", required=True, type=Path)
     compare.add_argument("--openpower", required=True, type=Path)
     compare.add_argument("--output", required=True, type=Path)
+    compare.add_argument(
+        "-j", "--jobs", default=1, type=_parse_jobs,
+        help="case-level worker processes (positive integer or 'auto')",
+    )
     compare.add_argument("--allow-development-fixtures", action="store_true")
     compare.set_defaults(handler=_compare_results)
 

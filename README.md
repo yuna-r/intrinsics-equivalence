@@ -44,6 +44,19 @@ ioitf check
 進捗はstderr、最後のJSONはstdoutなので、スクリプトからもそのまま扱えます。
 進捗を消したい場合だけ`ioitf check --quiet`を使います。
 
+ケース数やvectors数が多いときは、`--jobs`でCPUコアを使えます。
+
+```sh
+ioitf check --profile standard --count-per-case 1000 --jobs auto
+ioitf check --jobs 8
+```
+
+`auto`は利用可能な論理CPU数、数字はworker process数です。指定しなければ従来どおり
+1 processで動きます。vectors生成、Intel / OpenPOWER fixture、比較をケース単位で並列化し、
+完了後は元の順番へ戻すため、1 processと同じ並び・SHA-256の成果物になります。
+`--quality`を併用した場合はsanitizer buildの並列数にも同じ値を使います。
+小さいsmoke runではprocess起動分だけ不利なことがあるため、件数が多いとき向けです。
+
 最後には、SFレポートを付けない普通の`ioitf check`でも検証メトリクスが表示されます。
 件数は実際に指定したprofileとvectors数から計算されます。たとえばstandard runでは次の形です。
 
@@ -90,7 +103,7 @@ ioitf check --quality
 
 ```text
 [7/8] Run quality gates
-  [1/3] Python tests + coverage      [=======-----------]  41% 35/85
+  [1/3] Python tests + coverage      [=======-----------]  39% 35/89
   [2/3] C sanitizers                 [============------]  66% 2/3
   [3/3] Intel + OpenPOWER cross build [===============---]  83% 10/12
 ```

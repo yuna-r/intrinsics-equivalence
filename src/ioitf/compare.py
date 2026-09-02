@@ -8,16 +8,17 @@ rules from specification sections 13 and 15.1.
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 import math
 import re
 import struct
-from typing import Literal, TypeAlias
+from typing import Callable, Literal, Mapping, TypeAlias
 
 from .canonical import JSONValue, MAX_SAFE_INTEGER, require_object, utf16_sort_key
-from .cases import CaseDefinition
+from .cases import CaseDefinition, CaseRegistry
 from .errors import ValidationError
 from .records import FP_EXCEPTION_ORDER, validate_input_record, validate_result_record
 
@@ -757,6 +758,117 @@ def compare_result_records(
     return ComparisonResult("mismatch", mismatch_count, first, "value_mismatch")
 
 
+def _comparison_batch(
+    work: tuple[
+        CaseDefinition,
+        tuple[
+            tuple[
+                dict[str, JSONValue],
+                dict[str, JSONValue],
+                dict[str, JSONValue],
+            ],
+            ...,
+        ],
+    ],
+) -> list[ComparisonResult]:
+    case, records = work
+    return [
+        compare_result_records(
+            case,
+            input_record,
+            intel_record,
+            openpower_record,
+            validate=False,
+        )
+        for input_record, intel_record, openpower_record in records
+    ]
+
+
+def compare_result_record_set(
+    *,
+    cases: CaseRegistry,
+    input_records: tuple[dict[str, JSONValue], ...],
+    intel_records: Mapping[str, dict[str, JSONValue]],
+    openpower_records: Mapping[str, dict[str, JSONValue]],
+    jobs: int = 1,
+    progress: Callable[[int], None] | None = None,
+) -> list[ComparisonResult]:
+    """Compare a validated record set, optionally across case-level processes."""
+
+    if jobs < 1:
+        raise ValidationError("comparison jobs must be at least 1")
+    work: list[
+        tuple[
+            CaseDefinition,
+            tuple[
+                tuple[
+                    dict[str, JSONValue],
+                    dict[str, JSONValue],
+                    dict[str, JSONValue],
+                ],
+                ...,
+            ],
+        ]
+    ] = []
+    current_id = ""
+    current: list[
+        tuple[
+            dict[str, JSONValue],
+            dict[str, JSONValue],
+            dict[str, JSONValue],
+        ]
+    ] = []
+    for input_record in input_records:
+        case_id = str(input_record["case_id"])
+        if current and case_id != current_id:
+            work.append((cases.get(current_id), tuple(current)))
+            current = []
+        input_id = str(input_record["input_id"])
+        current_id = case_id
+        current.append(
+            (input_record, intel_records[input_id], openpower_records[input_id])
+        )
+    if current:
+        work.append((cases.get(current_id), tuple(current)))
+
+    if jobs == 1 or len(work) <= 1:
+        results: list[ComparisonResult] = []
+        for input_record in input_records:
+            input_id = str(input_record["input_id"])
+            results.append(
+                compare_result_records(
+                    cases.get(str(input_record["case_id"])),
+                    input_record,
+                    intel_records[input_id],
+                    openpower_records[input_id],
+                    validate=False,
+                )
+            )
+            if progress is not None:
+                progress(len(results))
+        return results
+
+    ordered: list[list[ComparisonResult] | None] = [None] * len(work)
+    completed_records = 0
+    with ProcessPoolExecutor(max_workers=min(jobs, len(work))) as executor:
+        pending = {
+            executor.submit(_comparison_batch, batch): index
+            for index, batch in enumerate(work)
+        }
+        for future in as_completed(pending):
+            batch = future.result()
+            ordered[pending[future]] = batch
+            completed_records += len(batch)
+            if progress is not None:
+                progress(completed_records)
+    return [
+        comparison
+        for batch in ordered
+        if batch is not None
+        for comparison in batch
+    ]
+
+
 # Concise public spelling for coordinator and test code.
 compare_results = compare_result_records
 
@@ -765,6 +877,7 @@ __all__ = [
     "ComparisonOutcome",
     "ComparisonResult",
     "compare_float_bits",
+    "compare_result_record_set",
     "compare_result_records",
     "compare_results",
 ]

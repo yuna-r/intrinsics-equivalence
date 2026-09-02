@@ -8,10 +8,11 @@ x86_64 or ppc64le execution evidence.
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 import platform
-from typing import Callable, Protocol
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from .canonical import (
     JSONValue,
@@ -22,11 +23,14 @@ from .canonical import (
     utf16_sort_key,
     write_jsonl,
 )
-from .cases import CaseRegistry
+from .cases import CaseDefinition, CaseRegistry
 from .development import load_development_case
 from .errors import ValidationError
 from .isa import ISARegistry, project_used_isa
 from .records import validate_result_record
+
+if TYPE_CHECKING:
+    from .artifacts import ResultArtifact
 
 
 class InputArtifactLike(Protocol):
@@ -41,6 +45,81 @@ class FixtureRunResult:
     results_path: Path
     record_count: int
     sha256: str
+    manifest: dict[str, JSONValue]
+    records: tuple[dict[str, JSONValue], ...]
+
+    def as_validated_artifact(self) -> ResultArtifact:
+        """Return the already validated in-process development result."""
+
+        from .artifacts import ResultArtifact
+
+        by_id = {str(record["input_id"]): record for record in self.records}
+        runner = self.manifest["runner"]
+        assert isinstance(runner, dict)
+        return ResultArtifact(
+            manifest_path=self.manifest_path,
+            results_path=self.results_path,
+            manifest=self.manifest,
+            records=by_id,
+            ordered_records=self.records,
+            role=str(runner["role"]),
+            development_fixture=True,
+            record_count=self.record_count,
+            sha256=self.sha256,
+            isa_registry_matches_local=True,
+        )
+
+
+def _result_record(
+    input_record: dict[str, JSONValue],
+    *,
+    case: CaseDefinition,
+    role: str,
+) -> dict[str, JSONValue]:
+    result: dict[str, JSONValue] = {
+        "case_id": case.id,
+        "duration_ns": 0,
+        "input_id": input_record["input_id"],
+        "observed": load_development_case(case).execute(input_record),
+        "runner": role,
+        "schema_version": 1,
+        "status": "ok",
+    }
+    validate_result_record(result, case, role=role, input_record=input_record)
+    return result
+
+
+def _result_batch(
+    work: tuple[CaseDefinition, str, tuple[dict[str, JSONValue], ...]],
+) -> list[dict[str, JSONValue]]:
+    case, role, records = work
+    return [
+        _result_record(input_record, case=case, role=role)
+        for input_record in records
+    ]
+
+
+def _fixture_work(
+    input_artifact: InputArtifactLike,
+    *,
+    cases: CaseRegistry,
+    role: str,
+) -> list[tuple[CaseDefinition, str, tuple[dict[str, JSONValue], ...]]]:
+    batches: list[
+        tuple[CaseDefinition, str, tuple[dict[str, JSONValue], ...]]
+    ] = []
+    current_id = ""
+    current: list[dict[str, JSONValue]] = []
+    for input_record in input_artifact.records:
+        case_id = str(input_record["case_id"])
+        if current and case_id != current_id:
+            batches.append((cases.get(current_id), role, tuple(current)))
+            current = []
+        current_id = case_id
+        current.append(input_record)
+    if current:
+        batches.append((cases.get(current_id), role, tuple(current)))
+    return batches
 
 
 def _result_records(
@@ -48,21 +127,37 @@ def _result_records(
     *,
     cases: CaseRegistry,
     role: str,
+    jobs: int = 1,
     progress: Callable[[int], None] | None = None,
 ) -> list[dict[str, JSONValue]]:
+    if jobs < 1:
+        raise ValidationError("fixture jobs must be at least 1")
+    work = _fixture_work(input_artifact, cases=cases, role=role)
+    if jobs > 1 and len(work) > 1:
+        ordered: list[list[dict[str, JSONValue]] | None] = [None] * len(work)
+        completed_records = 0
+        with ProcessPoolExecutor(max_workers=min(jobs, len(work))) as executor:
+            pending = {
+                executor.submit(_result_batch, batch): index
+                for index, batch in enumerate(work)
+            }
+            for future in as_completed(pending):
+                batch = future.result()
+                ordered[pending[future]] = batch
+                completed_records += len(batch)
+                if progress is not None:
+                    progress(completed_records)
+        return [
+            record
+            for batch in ordered
+            if batch is not None
+            for record in batch
+        ]
+
     results: list[dict[str, JSONValue]] = []
     for input_record in input_artifact.records:
         case = cases.get(str(input_record["case_id"]))
-        result: dict[str, JSONValue] = {
-            "case_id": case.id,
-            "duration_ns": 0,
-            "input_id": input_record["input_id"],
-            "observed": load_development_case(case).execute(input_record),
-            "runner": role,
-            "schema_version": 1,
-            "status": "ok",
-        }
-        validate_result_record(result, case, role=role, input_record=input_record)
+        result = _result_record(input_record, case=case, role=role)
         results.append(result)
         if progress is not None:
             progress(len(results))
@@ -193,6 +288,7 @@ def run_fixture(
     isa_registry: ISARegistry,
     role: str,
     output: str | Path,
+    jobs: int = 1,
     progress: Callable[[int], None] | None = None,
 ) -> FixtureRunResult:
     """Execute the portable fixture and publish a complete result artifact."""
@@ -209,7 +305,7 @@ def run_fixture(
     remove_completion_marker(manifest_path)
 
     results = _result_records(
-        input_artifact, cases=cases, role=role, progress=progress
+        input_artifact, cases=cases, role=role, jobs=jobs, progress=progress
     )
     count, byte_length, results_sha = write_jsonl(results_path, results)
     if count != len(input_artifact.records):
@@ -257,4 +353,12 @@ def run_fixture(
         "used_isa_contract_sha256": used.sha256,
     }
     atomic_write(manifest_path, dump_bytes(manifest, newline=True))
-    return FixtureRunResult(output_directory, manifest_path, results_path, count, results_sha)
+    return FixtureRunResult(
+        output_directory,
+        manifest_path,
+        results_path,
+        count,
+        results_sha,
+        manifest,
+        tuple(results),
+    )

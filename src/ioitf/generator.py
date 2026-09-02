@@ -2,18 +2,29 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import copy
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 
-from .canonical import JSONValue, atomic_write, dump_bytes, remove_completion_marker, write_jsonl
+from .canonical import (
+    JSONValue,
+    atomic_write,
+    dump_bytes,
+    remove_completion_marker,
+    utf16_sort_key,
+    write_jsonl,
+)
 from .cases import CaseDefinition, CaseRegistry, resolve_case_registry
 from .development import SplitMix64, load_development_case, rounding_modes
 from .errors import ValidationError
 from .isa import ISARegistry, UsedISAContract, project_used_isa
 from .records import derive_input_id, validate_input_record
+
+if TYPE_CHECKING:
+    from .artifacts import InputArtifact
 
 
 DEFAULT_SEED = "0x6a09e667f3bcc909"
@@ -29,6 +40,34 @@ class GenerateResult:
     sha256: str
     case_definitions_sha256: str
     used_isa_contract: UsedISAContract
+    manifest: dict[str, JSONValue]
+    records: tuple[dict[str, JSONValue], ...] | None = None
+
+    def as_validated_artifact(self) -> InputArtifact:
+        """Return records already validated while this artifact was generated."""
+
+        from .artifacts import InputArtifact
+
+        if self.records is None:
+            raise ValidationError("generated records were not retained")
+        case_ids = tuple(
+            sorted(
+                {str(record["case_id"]) for record in self.records},
+                key=utf16_sort_key,
+            )
+        )
+        return InputArtifact(
+            manifest_path=self.manifest_path,
+            vectors_path=self.vectors_path,
+            manifest=self.manifest,
+            records=self.records,
+            record_count=self.record_count,
+            sha256=self.sha256,
+            case_ids=case_ids,
+            case_definitions_sha256=self.case_definitions_sha256,
+            used_isa_contract=self.used_isa_contract,
+            isa_registry_matches_local=True,
+        )
 
 
 def _candidate_records(case: CaseDefinition, *, seed_text: str) -> Iterator[dict[str, JSONValue]]:
@@ -36,9 +75,13 @@ def _candidate_records(case: CaseDefinition, *, seed_text: str) -> Iterator[dict
 
 
 def _all_records(
-    registry: CaseRegistry, *, count_per_case: int, seed_text: str
+    registry: Iterable[CaseDefinition],
+    *,
+    count_per_case: int,
+    seed_text: str,
+    sequence_start: int = 0,
 ) -> Iterator[dict[str, JSONValue]]:
-    sequence = 0
+    sequence = sequence_start
     seen: set[str] = set()
     for case in registry:
         raw_regressions = case.data.get("regressions", {})
@@ -141,6 +184,54 @@ def _all_records(
             )
 
 
+def _case_record_batch(
+    work: tuple[CaseDefinition, int, str, int],
+) -> list[dict[str, JSONValue]]:
+    case, count_per_case, seed_text, sequence_start = work
+    return list(
+        _all_records(
+            (case,),
+            count_per_case=count_per_case,
+            seed_text=seed_text,
+            sequence_start=sequence_start,
+        )
+    )
+
+
+def _parallel_records(
+    registry: CaseRegistry,
+    *,
+    count_per_case: int,
+    seed_text: str,
+    jobs: int,
+    progress: Callable[[int], None] | None,
+) -> list[dict[str, JSONValue]]:
+    work = [
+        (case, count_per_case, seed_text, index * count_per_case)
+        for index, case in enumerate(registry)
+    ]
+    ordered: list[list[dict[str, JSONValue]] | None] = [None] * len(work)
+    completed_records = 0
+    with ProcessPoolExecutor(max_workers=min(jobs, len(work))) as executor:
+        pending = {
+            executor.submit(_case_record_batch, batch): index
+            for index, batch in enumerate(work)
+        }
+        for future in as_completed(pending):
+            batch = future.result()
+            ordered[pending[future]] = batch
+            completed_records += len(batch)
+            if progress is not None:
+                progress(completed_records)
+
+    return [
+        record
+        for batch in ordered
+        if batch is not None
+        for record in batch
+    ]
+
+
 def _records_with_progress(
     records: Iterator[dict[str, JSONValue]], progress: Callable[[int], None]
 ) -> Iterator[dict[str, JSONValue]]:
@@ -157,7 +248,9 @@ def generate_artifact(
     profile: str = "smoke",
     count_per_case: int | None = None,
     seed: str = DEFAULT_SEED,
+    jobs: int = 1,
     progress: Callable[[int], None] | None = None,
+    retain_records: bool = False,
 ) -> GenerateResult:
     registry = resolve_case_registry(cases, isa_registry=isa_registry)
     if profile not in PROFILE_COUNTS:
@@ -167,6 +260,8 @@ def generate_artifact(
     count = PROFILE_COUNTS[profile] if count_per_case is None else count_per_case
     if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 1_000_000:
         raise ValidationError("count_per_case must be from 1 through 1000000")
+    if jobs < 1:
+        raise ValidationError("generator jobs must be at least 1")
     for case in registry:
         minimum = load_development_case(case).minimum_counts.get(profile, 1)
         if count < minimum:
@@ -181,9 +276,27 @@ def generate_artifact(
     contracts = output_directory / "contracts"
     contracts.mkdir(parents=True, exist_ok=True)
     remove_completion_marker(manifest_path)
-    records = _all_records(registry, count_per_case=count, seed_text=seed)
-    if progress is not None:
-        records = _records_with_progress(records, progress)
+    retained: list[dict[str, JSONValue]] | None = None
+    if jobs > 1 and len(registry) > 1:
+        retained = _parallel_records(
+            registry,
+            count_per_case=count,
+            seed_text=seed,
+            jobs=jobs,
+            progress=progress,
+        )
+        records: Iterator[dict[str, JSONValue]] | list[dict[str, JSONValue]] = retained
+    else:
+        serial_records = _all_records(
+            registry, count_per_case=count, seed_text=seed
+        )
+        if progress is not None:
+            serial_records = _records_with_progress(serial_records, progress)
+        if retain_records:
+            retained = list(serial_records)
+            records = retained
+        else:
+            records = serial_records
     record_count, byte_length, vectors_sha = write_jsonl(vectors_path, records)
     if record_count != len(registry) * count:
         raise ValidationError("generator did not produce the requested unique inputs")
@@ -217,4 +330,6 @@ def generate_artifact(
         vectors_sha,
         case_sha,
         used,
+        manifest,
+        tuple(retained) if retain_records and retained is not None else None,
     )

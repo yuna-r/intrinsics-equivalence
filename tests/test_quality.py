@@ -148,10 +148,12 @@ class QualityTests(unittest.TestCase):
             subprocess.CompletedProcess([], 0, "cross passed\n", ""),
         ]
         completed_results = iter(completed)
+        commands: list[list[str]] = []
 
         def execute_stub(
             command: list[str], *, root: Path, log: Path, **_kwargs: object
         ) -> subprocess.CompletedProcess[str]:
+            commands.append(command)
             result = next(completed_results)
             log.write_text(result.stdout, encoding="utf-8")
             return result
@@ -167,6 +169,7 @@ class QualityTests(unittest.TestCase):
                 result = run_quality_gates(
                     root,
                     output,
+                    jobs=4,
                     progress=progress.append,
                 )
 
@@ -186,6 +189,13 @@ class QualityTests(unittest.TestCase):
             self.assertEqual(progress[-1].gate, 3)
             self.assertEqual(progress[-1].current, progress[-1].total)
             self.assertEqual(progress[-1].state, "pass")
+            self.assertTrue(
+                any(
+                    command[:2] == ["cmake", "--build"]
+                    and command[-2:] == ["--parallel", "4"]
+                    for command in commands
+                )
+            )
             summary = read_canonical_json(result.report_path)
             self.assertEqual(summary["status"], "pass")
             gates = summary["gates"]

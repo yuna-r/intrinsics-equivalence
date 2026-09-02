@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import copy
 from contextlib import redirect_stderr, redirect_stdout
 import io
@@ -23,7 +24,12 @@ from ioitf.canonical import (  # noqa: E402
     write_jsonl,
 )
 from ioitf.cases import load_case_definitions  # noqa: E402
-from ioitf.cli import _CheckProgress, _QualityGateProgress, main  # noqa: E402
+from ioitf.cli import (  # noqa: E402
+    _CheckProgress,
+    _QualityGateProgress,
+    _parse_jobs,
+    main,
+)
 from ioitf.compare import compare_result_records  # noqa: E402
 from ioitf.fixture import run_fixture  # noqa: E402
 from ioitf.generator import generate_artifact  # noqa: E402
@@ -117,6 +123,53 @@ class EndToEndTests(unittest.TestCase):
             self.assertRegex(metrics, r"match rate\s+100%")
             self.assertRegex(metrics, r"mismatch\s+0")
             self.assertIn("Quality metrics", metrics)
+
+    def test_parallel_check_is_byte_identical_to_serial_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            outputs = {"serial": root / "serial", "parallel": root / "parallel"}
+            results: dict[str, dict[str, object]] = {}
+            for name, jobs in (("serial", "1"), ("parallel", "2")):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
+                    exit_code = main(
+                        [
+                            "check",
+                            "--project", str(PROJECT / "ioitf.toml"),
+                            "--output", str(outputs[name]),
+                            "--count-per-case", "1",
+                            "--jobs", jobs,
+                            "--quiet",
+                        ]
+                    )
+                self.assertEqual(exit_code, 0)
+                parsed = loads(stdout.getvalue().strip())
+                assert isinstance(parsed, dict)
+                results[name] = parsed
+
+            self.assertEqual(results["serial"]["jobs"], 1)
+            self.assertEqual(results["parallel"]["jobs"], 2)
+            for relative in (
+                "vectors/test-vectors.jsonl",
+                "intel/intel-results.jsonl",
+                "intel/intel-results.manifest.json",
+                "openpower/power-results.jsonl",
+                "openpower/power-results.manifest.json",
+                "comparison/summary.json",
+                "comparison/junit.xml",
+            ):
+                self.assertEqual(
+                    (outputs["serial"] / relative).read_bytes(),
+                    (outputs["parallel"] / relative).read_bytes(),
+                    relative,
+                )
+
+    def test_jobs_accepts_auto_and_rejects_nonpositive_values(self) -> None:
+        with mock.patch("ioitf.cli.os.cpu_count", return_value=12):
+            self.assertEqual(_parse_jobs("auto"), 12)
+        self.assertEqual(_parse_jobs("3"), 3)
+        with self.assertRaisesRegex(argparse.ArgumentTypeError, "at least 1"):
+            _parse_jobs("0")
 
     def test_quality_option_is_an_eighth_opt_in_stage(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -147,6 +147,7 @@ def run_quality_gates(
     project_root: Path,
     output: Path,
     *,
+    jobs: int | None = None,
     progress: Callable[[QualityGateUpdate], None] | None = None,
 ) -> QualityRun:
     """Run expensive checks only when the caller explicitly requests them."""
@@ -213,6 +214,11 @@ def run_quality_gates(
 
     sanitizer_log = output / "sanitizers.log"
     sanitizer_build = output / "sanitizer-build"
+    sanitizer_build_command = [
+        "cmake", "--build", str(sanitizer_build), "--parallel"
+    ]
+    if jobs is not None:
+        sanitizer_build_command.append(str(jobs))
     sanitizer_commands = (
         [
             "cmake",
@@ -227,7 +233,7 @@ def run_quality_gates(
             "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined",
             "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined",
         ],
-        ["cmake", "--build", str(sanitizer_build), "--parallel"],
+        sanitizer_build_command,
         ["ctest", "--test-dir", str(sanitizer_build), "--output-on-failure"],
     )
     sanitizer_label = "C sanitizers"
