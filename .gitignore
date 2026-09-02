@@ -3,6 +3,7 @@
 /build/
 /dist/
 /artifacts/
+/work/
 *.egg-info/
 __pycache__/
 *.py[cod]

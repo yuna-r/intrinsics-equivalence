@@ -1,6 +1,7 @@
 #include <altivec.h>
 
 typedef __vector double f64x2;
+typedef __vector signed int i32x4;
 typedef __vector signed long long i64x2;
 typedef __vector unsigned long long u64x2;
 
@@ -221,4 +222,54 @@ int power_comige_f64x2(f64x2 a, f64x2 b)
 int power_comineq_f64x2(f64x2 a, f64x2 b)
 {
     return !ordered(a[0], b[0]) || a[0] != b[0];
+}
+
+static int nearest_i32(double value)
+{
+    long long integral;
+    double fraction;
+
+    if (value != value || value < -2147483648.5 || value >= 2147483647.5) {
+        return (-2147483647 - 1);
+    }
+    integral = (long long)value;
+    fraction = value - (double)integral;
+    if (fraction > 0.5 ||
+        (fraction == 0.5 && integral % 2LL != 0LL)) {
+        ++integral;
+    } else if (fraction < -0.5 ||
+               (fraction == -0.5 && integral % 2LL != 0LL)) {
+        --integral;
+    }
+    return (int)integral;
+}
+
+static int truncate_i32(double value)
+{
+    if (value != value || value < -2147483648.0 || value >= 2147483648.0) {
+        return (-2147483647 - 1);
+    }
+    return (int)value;
+}
+
+i32x4 power_cvt_f64x2_i32x4(f64x2 a)
+{
+    return (i32x4){nearest_i32(a[0]), nearest_i32(a[1]), 0, 0};
+}
+
+i32x4 power_cvtt_f64x2_i32x4(f64x2 a)
+{
+    return (i32x4){truncate_i32(a[0]), truncate_i32(a[1]), 0, 0};
+}
+
+f64x2 power_add_scalar_f64x2(f64x2 a, f64x2 b)
+{
+    return (f64x2){a[0] + b[0], a[1]};
+}
+
+f64x2 power_loadu_f64x2(const void *source)
+{
+    unsigned long long lanes[2];
+    __builtin_memcpy(lanes, source, sizeof(lanes));
+    return (f64x2)(u64x2){lanes[0], lanes[1]};
 }

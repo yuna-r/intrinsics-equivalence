@@ -74,7 +74,7 @@ isa_registry = "isa.json"
             for path in (suite / "cases").iterdir()
             if (path / "case.yaml").is_file()
         }
-        self.assertEqual(len(case_names), 128)
+        self.assertEqual(len(case_names), 146)
 
         for role, prefix in (("intel", "intel"), ("openpower", "power")):
             sources = "\n".join(

@@ -6,13 +6,13 @@
   <img alt="ppc64le" src="https://img.shields.io/badge/arch-ppc64le-5c6bc0?style=flat">
 </p>
 
-Intel IntrinsicをOpenPOWERへ移すときの中心部分を、全128ケース分まとめました。
+Intel IntrinsicをOpenPOWERへ移すときの中心部分を、全146ケース分まとめました。
 細切れにしすぎず、データ型ごとの塊で読めます。
 
 ```text
 openpower/
-├── f32x4.c   4 operations // bit casts across f32 / f64 / i32 lanes
-├── f64x2.c  36 operations // arithmetic, bit, construct, lane, compare
+├── f32x4.c  18 operations // arithmetic, compare, bit casts, conversion, lane, mask
+├── f64x2.c  40 operations // arithmetic, bit, construct, lane, compare, conversion, memory
 ├── i8x16.c  19 operations // arithmetic, saturation, average, SAD, shift, mask
 ├── i16x8.c  31 operations // arithmetic, multiply, average, shift, pack, lane
 ├── i32x4.c  25 operations // arithmetic, logic, compare, shift, construct, lane
@@ -22,10 +22,14 @@ openpower/
 | Family | Intel Intrinsics | OpenPOWER expression |
 |---|---|---|
 | cross-width bit cast | pd / ps / si128 casts | explicit 32/64-bit lane split and join |
+| numeric conversion | ps / pd / epi32 conversions | explicit widening, rounding, truncation, and invalid sentinel |
+| f32 arithmetic / compare | `_mm_add_ps` / `_mm_sqrt_ps` / `_mm_min_ps` / `_mm_cmpunord_ps` | VSX arithmetic + exact SSE special-value rules |
+| f32 lane / mask | `_mm_unpacklo_ps` / `_mm_movemask_ps` | lane initializer / sign-bit pack |
 | f64 arithmetic | `_mm_add_pd` / `_mm_sub_pd` / `_mm_mul_pd` | `vec_add` / `vec_sub` / `vec_mul` |
 | f64 bit | `_mm_and_pd` / `_mm_or_pd` / `_mm_xor_pd` | vector `&` / `\|` / `^` |
 | f64 construct / lane | set / set1 / move / shuffle / unpack / cast | splat / lane initializer / bit cast |
 | f64 compare | packed predicates, min/max, scalar COMI | lane comparison + exact SSE2 selection rules |
+| f64 scalar / memory | `_mm_add_sd` / `_mm_loadu_pd` | low-lane add with preservation / byte-exact unaligned load |
 | i8 arithmetic / reduction | add / sub / adds / subs / avg / SAD / min / max | vector operations + half reduction |
 | i8 lane / mask | byte shifts / unpack / movemask | semantic lane initializer + sign-bit pack |
 | i8 compare / construct | eq / gt / lt / set | vector comparison + lane initializer |

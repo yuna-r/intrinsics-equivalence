@@ -1,6 +1,7 @@
 #include <emmintrin.h>
 
 typedef __m128d f64x2;
+typedef __m128i i32x4;
 
 f64x2 intel_add_f64x2(f64x2 a, f64x2 b)
 {
@@ -186,4 +187,24 @@ int intel_comige_f64x2(f64x2 a, f64x2 b)
 int intel_comineq_f64x2(f64x2 a, f64x2 b)
 {
     return _mm_comineq_sd(a, b);
+}
+
+i32x4 intel_cvt_f64x2_i32x4(f64x2 a)
+{
+    return _mm_cvtpd_epi32(a);
+}
+
+i32x4 intel_cvtt_f64x2_i32x4(f64x2 a)
+{
+    return _mm_cvttpd_epi32(a);
+}
+
+f64x2 intel_add_scalar_f64x2(f64x2 a, f64x2 b)
+{
+    return _mm_add_sd(a, b);
+}
+
+f64x2 intel_loadu_f64x2(const void *source)
+{
+    return _mm_loadu_pd((const double *)source);
 }

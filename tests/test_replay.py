@@ -115,7 +115,9 @@ class ReplayVerificationTests(unittest.TestCase):
         assert isinstance(power_return, dict)
         power_lanes = power_return["lanes"]
         assert isinstance(power_lanes, list)
-        faulty_lane = f"0x{int(str(power_lanes[0]), 16) ^ 1:016x}"
+        original_lane = str(power_lanes[0])
+        lane_width = len(original_lane) - 2
+        faulty_lane = f"0x{int(original_lane, 16) ^ 1:0{lane_width}x}"
         self._rewrite_result(
             power_run.manifest_path,
             lambda records: self._set_first_return_lane(records, faulty_lane),

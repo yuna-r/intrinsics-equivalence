@@ -107,6 +107,8 @@ def _all_records(
             }
             if "immediates" in candidate:
                 record["immediates"] = candidate["immediates"]
+            if "buffers" in candidate:
+                record["buffers"] = candidate["buffers"]
             record["input_id"] = derive_input_id(record)
             regression_id = regression_by_input.get(str(record["input_id"]))
             if regression_id is not None:

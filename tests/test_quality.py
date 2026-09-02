@@ -39,11 +39,11 @@ class QualityTests(unittest.TestCase):
 
     def test_light_metrics_cover_every_case_without_running_heavy_gates(self) -> None:
         metrics = collect_quality_metrics(self.cases)
-        self.assertEqual(metrics.cases, 128)
-        self.assertEqual(metrics.valid_contracts, 128)
-        self.assertEqual(metrics.development_models, 128)
-        self.assertEqual(metrics.standard_boundary_floors, 128)
-        self.assertEqual(metrics.architecture_bindings, 256)
+        self.assertEqual(metrics.cases, 146)
+        self.assertEqual(metrics.valid_contracts, 146)
+        self.assertEqual(metrics.development_models, 146)
+        self.assertEqual(metrics.standard_boundary_floors, 146)
+        self.assertEqual(metrics.architecture_bindings, 292)
 
     def test_coverage_totals_include_unexecuted_source_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

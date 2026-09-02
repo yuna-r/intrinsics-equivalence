@@ -38,7 +38,9 @@ class CaseAndGeneratorTests(unittest.TestCase):
         self.assertEqual(
             self.cases.ids,
             (
+                "sse2.add.f32x4.default",
                 "sse2.add.f64x2.default",
+                "sse2.add.f64x2.scalar",
                 "sse2.add.i16x8.default",
                 "sse2.add.i32x4.default",
                 "sse2.add.i64x2.default",
@@ -79,6 +81,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.cmpnle.f64x2.default",
                 "sse2.cmpnlt.f64x2.default",
                 "sse2.cmpord.f64x2.default",
+                "sse2.cmpunord.f32x4.default",
                 "sse2.cmpunord.f64x2.default",
                 "sse2.comieq.f64x2.scalar",
                 "sse2.comige.f64x2.scalar",
@@ -86,21 +89,33 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.comile.f64x2.scalar",
                 "sse2.comilt.f64x2.scalar",
                 "sse2.comineq.f64x2.scalar",
+                "sse2.cvt.f32x4.f64x2",
+                "sse2.cvt.f32x4.i32x4",
+                "sse2.cvt.f64x2.f32x4",
+                "sse2.cvt.f64x2.i32x4",
+                "sse2.cvt.i32x4.f32x4",
+                "sse2.cvt.i32x4.f64x2",
                 "sse2.cvtsi128.i32x4.low",
                 "sse2.cvtsi128.i64x2.low",
                 "sse2.cvtsi32.i32x4.default",
                 "sse2.cvtsi64.i64x2.default",
+                "sse2.cvtt.f32x4.i32x4",
+                "sse2.cvtt.f64x2.i32x4",
                 "sse2.extract.i16x8.imm8",
                 "sse2.insert.i16x8.imm8",
+                "sse2.loadu.f64x2.default",
                 "sse2.madd.i16x8.default",
                 "sse2.max.f64x2.default",
                 "sse2.max.i16x8.default",
                 "sse2.max.u8x16.default",
+                "sse2.min.f32x4.default",
                 "sse2.min.f64x2.default",
                 "sse2.min.i16x8.default",
                 "sse2.min.u8x16.default",
                 "sse2.move.f64x2.default",
                 "sse2.move.i64x2.default",
+                "sse2.movehl.f32x4.default",
+                "sse2.movemask.f32x4.default",
                 "sse2.movemask.f64x2.default",
                 "sse2.movemask.i8x16.default",
                 "sse2.mul.f64x2.default",
@@ -123,6 +138,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.set1.i32x4.default",
                 "sse2.set1.i64x2.default",
                 "sse2.setr.i32x4.low-high",
+                "sse2.shuffle.f32x4.imm8",
                 "sse2.shuffle.f64x2.imm8",
                 "sse2.shuffle.i32x4.imm8",
                 "sse2.shufflehi.i16x8.imm8",
@@ -134,6 +150,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.slli.i16x8.imm8",
                 "sse2.slli.i32x4.imm8",
                 "sse2.slli.i64x2.imm8",
+                "sse2.sqrt.f32x4.default",
                 "sse2.sra.i16x8.vector-count",
                 "sse2.sra.i32x4.vector-count",
                 "sse2.srai.i16x8.imm8",
@@ -159,6 +176,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.unpackhi.i32x4.default",
                 "sse2.unpackhi.i64x2.default",
                 "sse2.unpackhi.i8x16.default",
+                "sse2.unpacklo.f32x4.default",
                 "sse2.unpacklo.f64x2.default",
                 "sse2.unpacklo.i16x8.default",
                 "sse2.unpacklo.i32x4.default",
@@ -272,7 +290,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 640)
+            self.assertEqual(first.record_count, 730)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -1328,6 +1346,192 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 self.assertEqual(
                     pack.execute(unordered),
                     {"return": vector("f64", (true, true))},
+                )
+
+    def test_f32_lane_and_numeric_conversion_models_have_golden_results(self) -> None:
+        checks = (
+            (
+                "sse2.movemask.f32x4.default",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f32", (0x80000000, 0, 0xFFFFFFFF, 0x7FFFFFFF)
+                        )
+                    }
+                },
+                scalar("i32", 5),
+            ),
+            (
+                "sse2.unpacklo.f32x4.default",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f32",
+                            (0x11111111, 0x22222222, 0x33333333, 0x44444444),
+                        ),
+                        "b": vector(
+                            "f32",
+                            (0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC, 0xDDDDDDDD),
+                        ),
+                    }
+                },
+                vector(
+                    "f32", (0x11111111, 0xAAAAAAAA, 0x22222222, 0xBBBBBBBB)
+                ),
+            ),
+            (
+                "sse2.cvt.f32x4.f64x2",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f32", (0x3F800000, 0x80000001, 0x7F800001, 0xDEADBEEF)
+                        )
+                    }
+                },
+                vector("f64", (0x3FF0000000000000, 0xB6A0000000000000)),
+            ),
+            (
+                "sse2.cvt.i32x4.f64x2",
+                {
+                    "operands": {
+                        "a": vector(
+                            "i32", (0x7FFFFFFF, 0x80000000, 0xDEADBEEF, 0xCAFEBABE)
+                        )
+                    }
+                },
+                vector("f64", (0x41DFFFFFFFC00000, 0xC1E0000000000000)),
+            ),
+            (
+                "sse2.cvt.f64x2.i32x4",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f64", (0x3FF8000000000000, 0x4004000000000000)
+                        )
+                    }
+                },
+                vector("i32", (2, 2, 0, 0)),
+            ),
+            (
+                "sse2.cvtt.f64x2.i32x4",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f64", (0x3FFE666666666666, 0xBFFE666666666666)
+                        )
+                    }
+                },
+                vector("i32", (1, 0xFFFFFFFF, 0, 0)),
+            ),
+        )
+        for case_id, record, expected in checks:
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": expected})
+
+        invalid = {
+            "operands": {
+                "a": vector("f64", (0x7FF8000000000042, 0x7FF0000000000000))
+            }
+        }
+        for case_id in ("sse2.cvt.f64x2.i32x4", "sse2.cvtt.f64x2.i32x4"):
+            with self.subTest(case_id=case_id, boundary="invalid"):
+                actual = load_development_case(self.cases.get(case_id)).execute(invalid)
+                self.assertEqual(
+                    actual,
+                    {"return": vector("i32", (0x80000000, 0x80000000, 0, 0))},
+                )
+
+    def test_f32_shuffle_narrowing_and_integer_conversions_have_golden_results(
+        self,
+    ) -> None:
+        checks = (
+            (
+                "sse2.shuffle.f32x4.imm8",
+                {
+                    "immediates": {"imm8": 78},
+                    "operands": {
+                        "a": vector("f32", (0, 1, 2, 3)),
+                        "b": vector("f32", (4, 5, 6, 7)),
+                    },
+                },
+                vector("f32", (2, 3, 4, 5)),
+            ),
+            (
+                "sse2.movehl.f32x4.default",
+                {
+                    "operands": {
+                        "a": vector("f32", (0, 1, 2, 3)),
+                        "b": vector("f32", (4, 5, 6, 7)),
+                    }
+                },
+                vector("f32", (6, 7, 2, 3)),
+            ),
+            (
+                "sse2.cvt.f64x2.f32x4",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f64", (0x3FF0000010000000, 0x3690000000000001)
+                        )
+                    }
+                },
+                vector("f32", (0x3F800000, 0x00000001, 0, 0)),
+            ),
+            (
+                "sse2.cvt.i32x4.f32x4",
+                {
+                    "operands": {
+                        "a": vector(
+                            "i32", (0x01000001, 0x01000003, 0x7FFFFFFF, 0x80000000)
+                        )
+                    }
+                },
+                vector("f32", (0x4B800000, 0x4B800002, 0x4F000000, 0xCF000000)),
+            ),
+            (
+                "sse2.cvt.f32x4.i32x4",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f32", (0x3FC00000, 0x40200000, 0xBFC00000, 0xC0200000)
+                        )
+                    }
+                },
+                vector("i32", (2, 2, 0xFFFFFFFE, 0xFFFFFFFE)),
+            ),
+            (
+                "sse2.cvtt.f32x4.i32x4",
+                {
+                    "operands": {
+                        "a": vector(
+                            "f32", (0x3FF33333, 0xBFF33333, 0x4EFFFFFF, 0xCF000000)
+                        )
+                    }
+                },
+                vector("i32", (1, 0xFFFFFFFF, 0x7FFFFF80, 0x80000000)),
+            ),
+        )
+        for case_id, record, expected in checks:
+            with self.subTest(case_id=case_id):
+                actual = load_development_case(self.cases.get(case_id)).execute(record)
+                self.assertEqual(actual, {"return": expected})
+
+        invalid = {
+            "operands": {
+                "a": vector("f32", (0x7FC00042, 0x7F800000, 0xCF000001, 0x4F000000))
+            }
+        }
+        for case_id in ("sse2.cvt.f32x4.i32x4", "sse2.cvtt.f32x4.i32x4"):
+            with self.subTest(case_id=case_id, boundary="invalid"):
+                actual = load_development_case(self.cases.get(case_id)).execute(invalid)
+                self.assertEqual(
+                    actual,
+                    {
+                        "return": vector(
+                            "i32", (0x80000000, 0x80000000, 0x80000000, 0x80000000)
+                        )
+                    },
                 )
 
     def test_input_id_does_not_include_sequence_or_generation(self) -> None:
