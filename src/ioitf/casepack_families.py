@@ -53,6 +53,138 @@ def _signed(value: int, width: int) -> int:
     return value - (1 << width) if value & (1 << (width - 1)) else value
 
 
+BinaryExample = (
+    tuple[Sequence[int], Sequence[int]]
+    | tuple[Sequence[int], Sequence[int], str]
+)
+
+
+def _binary_lane(operation: str, left: int, right: int, *, width: int, signed: bool) -> int:
+    """The deliberately tiny instruction set behind :func:`binary_case`."""
+
+    mask = (1 << width) - 1
+    a = _signed(left, width) if signed else left
+    b = _signed(right, width) if signed else right
+    if operation == "+":
+        return left + right
+    if operation == "-":
+        return left - right
+    if operation == "&":
+        return left & right
+    if operation == "|":
+        return left | right
+    if operation == "^":
+        return left ^ right
+    if operation == "~&":
+        return (~left) & right
+    if operation == "==":
+        return mask if left == right else 0
+    if operation == ">":
+        return mask if a > b else 0
+    if operation == "<":
+        return mask if a < b else 0
+    if operation == "sat+":
+        result = a + b
+    elif operation == "sat-":
+        result = a - b
+    elif operation == "avg":
+        return (left + right + 1) // 2
+    elif operation == "min":
+        return min(a, b)
+    elif operation == "max":
+        return max(a, b)
+    elif operation == "*lo":
+        return left * right
+    elif operation == "*hi":
+        return (a * b) >> width
+    else:
+        raise ValueError(f"unknown binary case operation: {operation!r}")
+
+    lower = -(1 << (width - 1)) if signed else 0
+    upper = (1 << (width - 1)) - 1 if signed else mask
+    return min(upper, max(lower, result))
+
+
+def binary_case(
+    case_id: str,
+    shape: str,
+    operation: str,
+    examples: Sequence[BinaryExample],
+    *,
+    standard: int,
+    example_class: str = "boundary",
+) -> FactoryResult:
+    """Build the repetitive binary-vector case pack from its interesting bits.
+
+    ``shape`` reads like ``i16x8`` and ``operation`` is intentionally compact:
+    ``+ - & | ^ ~& == > < sat+ sat- avg min max *lo *hi``.
+    """
+
+    element, separator, lane_text = shape.rpartition("x")
+    if not separator or element[:1] not in {"i", "u"}:
+        raise ValueError(f"binary_case requires an integer vector shape, got {shape!r}")
+    width = int(element[1:])
+    lanes = int(lane_text)
+    mask = (1 << width) - 1
+    signed = element.startswith("i")
+    _binary_lane(operation, 0, 0, width=width, signed=signed)
+
+    def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
+        random = SplitMix64(int(seed_text, 16))
+        modes = rounding_modes(case)
+        for index, example in enumerate(examples):
+            left, right = example[:2]
+            generation_class = str(example[2]) if len(example) == 3 else example_class
+            yield {
+                "environment": {
+                    "fp_mode": "ieee",
+                    "rounding": modes[index % len(modes)],
+                },
+                "generation": {"class": generation_class},
+                "operands": {
+                    "a": vector(element, tuple(left)),
+                    "b": vector(element, tuple(right)),
+                },
+            }
+        while True:
+            yield {
+                "environment": {
+                    "fp_mode": "ieee",
+                    "rounding": modes[random.next() % len(modes)],
+                },
+                "generation": {
+                    "algorithm": "splitmix64",
+                    "class": "random",
+                    "seed": seed_text,
+                },
+                "operands": {
+                    "a": vector(
+                        element, tuple(random.next() & mask for _ in range(lanes))
+                    ),
+                    "b": vector(
+                        element, tuple(random.next() & mask for _ in range(lanes))
+                    ),
+                },
+            }
+
+    def execute(record: Candidate) -> Candidate:
+        result = tuple(
+            _binary_lane(
+                operation,
+                int(str(left), 16),
+                int(str(right), 16),
+                width=width,
+                signed=signed,
+            )
+            for left, right in zip(
+                _lanes(record, "a"), _lanes(record, "b"), strict=True
+            )
+        )
+        return {"return": vector(element, result)}
+
+    return case_id, {"standard": standard}, candidates, execute
+
+
 def variable_shift_case(
     case_id: str, element: str, lanes: int, kind: str
 ) -> FactoryResult:

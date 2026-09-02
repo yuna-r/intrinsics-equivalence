@@ -82,12 +82,22 @@ isa_registry = "isa.json"
                 for path in sorted((suite / role).glob("*.c"))
             )
             self.assertNotIn("example_", sources)
-            symbols = set(
+            symbol_pattern = (
+                r"[a-z0-9_]+_(?:f32x4|f64x2|[iu]8x16|[iu]16x8|[iu]32x4|[iu]64x2)"
+            )
+            functions = set(
                 re.findall(
-                    rf"\b{prefix}_([a-z0-9_]+_(?:f32x4|f64x2|[iu]8x16|[iu]16x8|[iu]32x4|[iu]64x2))\s*\(",
+                    rf"\b{prefix}_({symbol_pattern})\s*\(",
                     sources,
                 )
             )
+            shortcuts = set(
+                re.findall(
+                    rf"\bIOITF_(?:BINARY|UNARY)\([^,]+,[^,]+,\s*{prefix}_({symbol_pattern})\s*,",
+                    sources,
+                )
+            )
+            symbols = functions | shortcuts
             operations = {symbol.replace("_", "-") for symbol in symbols}
 
             with self.subTest(role=role):

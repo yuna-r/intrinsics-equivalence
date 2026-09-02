@@ -1,53 +1,19 @@
+#include "../shortcuts.h"
 #include <altivec.h>
 
 typedef __vector signed char i8x16;
 typedef __vector unsigned char u8x16;
 typedef __vector unsigned long long u64x2;
 
-u8x16 power_add_i8x16(u8x16 a, u8x16 b)
-{
-    return a + b;
-}
-
-u8x16 power_sub_i8x16(u8x16 a, u8x16 b)
-{
-    return a - b;
-}
-
-u8x16 power_adds_i8x16(u8x16 a, u8x16 b)
-{
-    return (u8x16)vec_adds((i8x16)a, (i8x16)b);
-}
-
-u8x16 power_adds_u8x16(u8x16 a, u8x16 b)
-{
-    return vec_adds(a, b);
-}
-
-u8x16 power_subs_i8x16(u8x16 a, u8x16 b)
-{
-    return (u8x16)vec_subs((i8x16)a, (i8x16)b);
-}
-
-u8x16 power_subs_u8x16(u8x16 a, u8x16 b)
-{
-    return vec_subs(a, b);
-}
-
-u8x16 power_cmpeq_i8x16(u8x16 a, u8x16 b)
-{
-    return (u8x16)vec_cmpeq(a, b);
-}
-
-u8x16 power_cmpgt_i8x16(u8x16 a, u8x16 b)
-{
-    return (u8x16)vec_cmpgt((i8x16)a, (i8x16)b);
-}
-
-u8x16 power_avg_u8x16(u8x16 a, u8x16 b)
-{
-    return vec_avg(a, b);
-}
+IOITF_BINARY(u8x16, u8x16, power_add_i8x16, a + b)
+IOITF_BINARY(u8x16, u8x16, power_sub_i8x16, a - b)
+IOITF_BINARY(u8x16, u8x16, power_adds_i8x16, (u8x16)vec_adds((i8x16)a, (i8x16)b))
+IOITF_BINARY(u8x16, u8x16, power_adds_u8x16, vec_adds(a, b))
+IOITF_BINARY(u8x16, u8x16, power_subs_i8x16, (u8x16)vec_subs((i8x16)a, (i8x16)b))
+IOITF_BINARY(u8x16, u8x16, power_subs_u8x16, vec_subs(a, b))
+IOITF_BINARY(u8x16, u8x16, power_cmpeq_i8x16, (u8x16)vec_cmpeq(a, b))
+IOITF_BINARY(u8x16, u8x16, power_cmpgt_i8x16, (u8x16)vec_cmpgt((i8x16)a, (i8x16)b))
+IOITF_BINARY(u8x16, u8x16, power_avg_u8x16, vec_avg(a, b))
 
 u64x2 power_sad_u8x16(u8x16 a, u8x16 b)
 {
@@ -64,15 +30,8 @@ u64x2 power_sad_u8x16(u8x16 a, u8x16 b)
     return (u64x2){low, high};
 }
 
-u8x16 power_min_u8x16(u8x16 a, u8x16 b)
-{
-    return vec_min(a, b);
-}
-
-u8x16 power_max_u8x16(u8x16 a, u8x16 b)
-{
-    return vec_max(a, b);
-}
+IOITF_BINARY(u8x16, u8x16, power_min_u8x16, vec_min(a, b))
+IOITF_BINARY(u8x16, u8x16, power_max_u8x16, vec_max(a, b))
 
 u8x16 power_slli_bytes_u8x16(u8x16 v, unsigned imm)
 {
@@ -145,10 +104,7 @@ int power_movemask_i8x16(u8x16 v)
     return (int)result;
 }
 
-u8x16 power_cmplt_i8x16(u8x16 a, u8x16 b)
-{
-    return (u8x16)vec_cmpgt((i8x16)b, (i8x16)a);
-}
+IOITF_BINARY(u8x16, u8x16, power_cmplt_i8x16, (u8x16)vec_cmpgt((i8x16)b, (i8x16)a))
 
 i8x16 power_set_i8x16(signed char lane15, signed char lane14,
                        signed char lane13, signed char lane12,

@@ -1,16 +1,10 @@
+#include "../shortcuts.h"
 #include <emmintrin.h>
 
 typedef __m128i i64x2;
 
-i64x2 intel_add_i64x2(i64x2 a, i64x2 b)
-{
-    return _mm_add_epi64(a, b);
-}
-
-i64x2 intel_sub_i64x2(i64x2 a, i64x2 b)
-{
-    return _mm_sub_epi64(a, b);
-}
+IOITF_BINARY(i64x2, i64x2, intel_add_i64x2, _mm_add_epi64(a, b))
+IOITF_BINARY(i64x2, i64x2, intel_sub_i64x2, _mm_sub_epi64(a, b))
 
 i64x2 intel_slli_i64x2(i64x2 v, unsigned imm)
 {
@@ -38,15 +32,8 @@ i64x2 intel_srli_i64x2(i64x2 v, unsigned imm)
     }
 }
 
-i64x2 intel_unpacklo_i64x2(i64x2 a, i64x2 b)
-{
-    return _mm_unpacklo_epi64(a, b);
-}
-
-i64x2 intel_unpackhi_i64x2(i64x2 a, i64x2 b)
-{
-    return _mm_unpackhi_epi64(a, b);
-}
+IOITF_BINARY(i64x2, i64x2, intel_unpacklo_i64x2, _mm_unpacklo_epi64(a, b))
+IOITF_BINARY(i64x2, i64x2, intel_unpackhi_i64x2, _mm_unpackhi_epi64(a, b))
 
 i64x2 intel_move_i64x2(i64x2 value)
 {
@@ -73,10 +60,7 @@ i64x2 intel_srl_i64x2(i64x2 a, __m128i count)
     return _mm_srl_epi64(a, count);
 }
 
-long long intel_cvtsi128_i64x2(i64x2 a)
-{
-    return _mm_cvtsi128_si64(a);
-}
+IOITF_UNARY(long long, i64x2, intel_cvtsi128_i64x2, _mm_cvtsi128_si64(a))
 
 i64x2 intel_set_i64x2(long long high, long long low)
 {

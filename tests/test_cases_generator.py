@@ -19,6 +19,7 @@ from ioitf.canonical import (  # noqa: E402
     sha256_file,
 )
 from ioitf.cases import load_case_definitions, validate_case_definition  # noqa: E402
+from ioitf.casepack_families import binary_case  # noqa: E402
 from ioitf.development import load_development_case, scalar, vector  # noqa: E402
 from ioitf.errors import ValidationError  # noqa: E402
 from ioitf.generator import SplitMix64, generate_artifact  # noqa: E402
@@ -215,6 +216,34 @@ class CaseAndGeneratorTests(unittest.TestCase):
         for element, lane in expected.items():
             with self.subTest(element=element):
                 self.assertEqual(vector(element, (-1,))["lanes"], [lane])
+
+    def test_binary_case_dsl_keeps_the_small_operations_honest(self) -> None:
+        checks = (
+            ("i8x1", "sat+", 0x7F, 1, 0x7F),
+            ("u8x1", "sat-", 0, 1, 0),
+            ("i8x1", ">", 0xFF, 0, 0),
+            ("i16x1", "*hi", 0x8000, 2, 0xFFFF),
+            ("i8x1", "~&", 0x0F, 0x33, 0x30),
+        )
+        for shape, operation, left, right, expected in checks:
+            with self.subTest(shape=shape, operation=operation):
+                element = shape.rpartition("x")[0]
+                _, _, _, execute = binary_case(
+                    "test.case",
+                    shape,
+                    operation,
+                    (((left,), (right,)),),
+                    standard=1,
+                )
+                record = {
+                    "operands": {
+                        "a": vector(element, (left,)),
+                        "b": vector(element, (right,)),
+                    }
+                }
+                self.assertEqual(
+                    execute(record), {"return": vector(element, (expected,))}
+                )
 
     def test_scalar_helper_formats_every_supported_width(self) -> None:
         expected = {

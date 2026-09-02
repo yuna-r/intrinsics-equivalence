@@ -28,4 +28,6 @@ intel/
 | i64 arithmetic / shift / construct / lane | 13 | [`i64x2.c`](i64x2.c) |
 
 入力decodeや共通ABIを外し、比較対象になるIntrinsic呼び出しを見やすくしたofficial exampleです。
+単純wrapperは[`../shortcuts.h`](../shortcuts.h)の`IOITF_BINARY` / `IOITF_UNARY`で
+1操作1行にし、switchやlane操作だけを普通のC関数として目立たせています。
 実際のevidence adapterは[`../../adapters/intel/sse2_pd.c`](../../adapters/intel/sse2_pd.c)にあります。

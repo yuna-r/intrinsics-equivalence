@@ -1,35 +1,16 @@
 """Development generator and executable model for _mm_avg_epu8."""
 
-from __future__ import annotations
-
-from typing import Iterator
-
-from ioitf.canonical import JSONValue
-from ioitf.cases import CaseDefinition
-from ioitf.development import SplitMix64, rounding_modes, vector
+from ioitf.casepack_families import binary_case
 
 
-CASE_ID = "sse2.avg.u8x16.default"
-MINIMUM_COUNTS = {"standard": 4}
-MASK = 0xFF
-STRUCTURED = (
+EXAMPLES = (
     ((0,) * 16, (0,) * 16),
     ((0, 1, 2, 3) * 4, (1, 2, 3, 4) * 4),
     ((0xFF, 0xFE, 0x80, 0x7F) * 4, (0xFF, 1, 0x80, 0x80) * 4),
     (tuple(range(16)), tuple(reversed(range(16)))),
 )
 
-
-def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[dict[str, JSONValue]]:
-    random = SplitMix64(int(seed_text, 16)); modes = rounding_modes(case)
-    for index, (a, b) in enumerate(STRUCTURED):
-        yield {"environment": {"fp_mode": "ieee", "rounding": modes[index % len(modes)]}, "generation": {"class": "boundary"}, "operands": {"a": vector("u8", a), "b": vector("u8", b)}}
-    while True:
-        yield {"environment": {"fp_mode": "ieee", "rounding": modes[random.next() % len(modes)]}, "generation": {"algorithm": "splitmix64", "class": "random", "seed": seed_text}, "operands": {"a": vector("u8", tuple(random.next() & MASK for _ in range(16))), "b": vector("u8", tuple(random.next() & MASK for _ in range(16)))}}
-
-
-def execute(record: dict[str, JSONValue]) -> dict[str, JSONValue]:
-    operands = record["operands"]; assert isinstance(operands, dict)
-    a, b = operands["a"], operands["b"]; assert isinstance(a, dict) and isinstance(b, dict)
-    left, right = a["lanes"], b["lanes"]; assert isinstance(left, list) and isinstance(right, list)
-    return {"return": vector("u8", tuple((int(str(x), 16) + int(str(y), 16) + 1) // 2 for x, y in zip(left, right, strict=True)))}
+CASE_ID, MINIMUM_COUNTS, candidates, execute = binary_case(
+    "sse2.avg.u8x16.default", "u8x16", "avg", EXAMPLES,
+    standard=4,
+)

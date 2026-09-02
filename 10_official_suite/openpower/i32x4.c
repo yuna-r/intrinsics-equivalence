@@ -1,3 +1,4 @@
+#include "../shortcuts.h"
 #include <altivec.h>
 
 typedef __vector signed int i32x4;
@@ -5,45 +6,14 @@ typedef __vector unsigned int u32x4;
 typedef __vector signed short i16x8;
 typedef __vector unsigned long long u64x2;
 
-u32x4 power_add_i32x4(u32x4 a, u32x4 b)
-{
-    return a + b;
-}
-
-u32x4 power_sub_i32x4(u32x4 a, u32x4 b)
-{
-    return a - b;
-}
-
-u32x4 power_and_i32x4(u32x4 a, u32x4 b)
-{
-    return a & b;
-}
-
-u32x4 power_or_i32x4(u32x4 a, u32x4 b)
-{
-    return a | b;
-}
-
-u32x4 power_xor_i32x4(u32x4 a, u32x4 b)
-{
-    return a ^ b;
-}
-
-u32x4 power_andnot_i32x4(u32x4 a, u32x4 b)
-{
-    return (~a) & b;
-}
-
-u32x4 power_cmpeq_i32x4(u32x4 a, u32x4 b)
-{
-    return (u32x4)vec_cmpeq(a, b);
-}
-
-u32x4 power_cmpgt_i32x4(u32x4 a, u32x4 b)
-{
-    return (u32x4)vec_cmpgt((i32x4)a, (i32x4)b);
-}
+IOITF_BINARY(u32x4, u32x4, power_add_i32x4, a + b)
+IOITF_BINARY(u32x4, u32x4, power_sub_i32x4, a - b)
+IOITF_BINARY(u32x4, u32x4, power_and_i32x4, a & b)
+IOITF_BINARY(u32x4, u32x4, power_or_i32x4, a | b)
+IOITF_BINARY(u32x4, u32x4, power_xor_i32x4, a ^ b)
+IOITF_BINARY(u32x4, u32x4, power_andnot_i32x4, (~a) & b)
+IOITF_BINARY(u32x4, u32x4, power_cmpeq_i32x4, (u32x4)vec_cmpeq(a, b))
+IOITF_BINARY(u32x4, u32x4, power_cmpgt_i32x4, (u32x4)vec_cmpgt((i32x4)a, (i32x4)b))
 
 u32x4 power_slli_i32x4(u32x4 v, unsigned imm)
 {
@@ -73,15 +43,8 @@ u32x4 power_shuffle_i32x4(u32x4 v, unsigned imm)
                    v[(imm >> 4) & 3U], v[(imm >> 6) & 3U]};
 }
 
-u32x4 power_unpacklo_i32x4(u32x4 a, u32x4 b)
-{
-    return (u32x4){a[0], b[0], a[1], b[1]};
-}
-
-u32x4 power_unpackhi_i32x4(u32x4 a, u32x4 b)
-{
-    return (u32x4){a[2], b[2], a[3], b[3]};
-}
+IOITF_BINARY(u32x4, u32x4, power_unpacklo_i32x4, (u32x4){a[0], b[0], a[1], b[1]})
+IOITF_BINARY(u32x4, u32x4, power_unpackhi_i32x4, (u32x4){a[2], b[2], a[3], b[3]})
 
 u64x2 power_mul_u32x4(u32x4 a, u32x4 b)
 {
@@ -89,10 +52,7 @@ u64x2 power_mul_u32x4(u32x4 a, u32x4 b)
                     (unsigned long long)a[2] * b[2]};
 }
 
-i16x8 power_packs_i32x4(i32x4 a, i32x4 b)
-{
-    return vec_packs(a, b);
-}
+IOITF_BINARY(i16x8, i32x4, power_packs_i32x4, vec_packs(a, b))
 
 i32x4 power_cvtsi32_i32x4(int value)
 {
@@ -129,15 +89,8 @@ u32x4 power_sra_i32x4(u32x4 a, u64x2 count)
     return (u32x4)vec_sra((i32x4)a, vec_splats(n));
 }
 
-u32x4 power_cmplt_i32x4(u32x4 a, u32x4 b)
-{
-    return (u32x4)vec_cmpgt((i32x4)b, (i32x4)a);
-}
-
-int power_cvtsi128_i32x4(i32x4 a)
-{
-    return a[0];
-}
+IOITF_BINARY(u32x4, u32x4, power_cmplt_i32x4, (u32x4)vec_cmpgt((i32x4)b, (i32x4)a))
+IOITF_UNARY(int, i32x4, power_cvtsi128_i32x4, a[0])
 
 i32x4 power_set_i32x4(int lane3, int lane2, int lane1, int lane0)
 {

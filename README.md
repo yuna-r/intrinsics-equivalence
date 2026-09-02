@@ -173,10 +173,10 @@ x86-64 ELFとOpenPOWER ELF V2 ABIのppc64le objectを同時に生成します。
 
 ## ケースをひとつ増やす
 
-似ているケースをコピーします。
+似ている短いケースをコピーします。
 
 ```sh
-cp -R 10_official_suite/cases/add-f64x2 10_official_suite/cases/my-new-case
+cp -R 10_official_suite/cases/add-i32x4 10_official_suite/cases/my-new-case
 ```
 
 1ケースは、この小さな塊だけです。
@@ -188,6 +188,16 @@ my-new-case/
 ```
 
 2ファイルを直したら、いつものコマンドを実行します。
+
+単純なvector演算の`development.py`は、境界値とこの1行が中心です。
+
+```python
+CASE_ID, MINIMUM_COUNTS, candidates, execute = binary_case(
+    "sse2.my-new.i32x4.default", "i32x4", "+", EXAMPLES, standard=8,
+)
+```
+
+共通の乱数生成やlane処理は見えません。特殊な意味があるcaseだけ普通のPythonで書けます。
 
 ```sh
 ioitf check

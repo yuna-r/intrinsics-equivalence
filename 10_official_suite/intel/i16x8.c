@@ -1,81 +1,23 @@
+#include "../shortcuts.h"
 #include <emmintrin.h>
 
 typedef __m128i i16x8;
 
-i16x8 intel_add_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_add_epi16(a, b);
-}
-
-i16x8 intel_sub_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_sub_epi16(a, b);
-}
-
-i16x8 intel_adds_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_adds_epi16(a, b);
-}
-
-i16x8 intel_adds_u16x8(i16x8 a, i16x8 b)
-{
-    return _mm_adds_epu16(a, b);
-}
-
-i16x8 intel_subs_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_subs_epi16(a, b);
-}
-
-i16x8 intel_subs_u16x8(i16x8 a, i16x8 b)
-{
-    return _mm_subs_epu16(a, b);
-}
-
-i16x8 intel_cmpeq_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_cmpeq_epi16(a, b);
-}
-
-i16x8 intel_cmpgt_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_cmpgt_epi16(a, b);
-}
-
-i16x8 intel_mullo_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_mullo_epi16(a, b);
-}
-
-i16x8 intel_mulhi_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_mulhi_epi16(a, b);
-}
-
-i16x8 intel_mulhi_u16x8(i16x8 a, i16x8 b)
-{
-    return _mm_mulhi_epu16(a, b);
-}
-
-i16x8 intel_madd_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_madd_epi16(a, b);
-}
-
-i16x8 intel_avg_u16x8(i16x8 a, i16x8 b)
-{
-    return _mm_avg_epu16(a, b);
-}
-
-i16x8 intel_min_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_min_epi16(a, b);
-}
-
-i16x8 intel_max_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_max_epi16(a, b);
-}
+IOITF_BINARY(i16x8, i16x8, intel_add_i16x8, _mm_add_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_sub_i16x8, _mm_sub_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_adds_i16x8, _mm_adds_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_adds_u16x8, _mm_adds_epu16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_subs_i16x8, _mm_subs_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_subs_u16x8, _mm_subs_epu16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_cmpeq_i16x8, _mm_cmpeq_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_cmpgt_i16x8, _mm_cmpgt_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_mullo_i16x8, _mm_mullo_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_mulhi_i16x8, _mm_mulhi_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_mulhi_u16x8, _mm_mulhi_epu16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_madd_i16x8, _mm_madd_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_avg_u16x8, _mm_avg_epu16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_min_i16x8, _mm_min_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_max_i16x8, _mm_max_epi16(a, b))
 
 i16x8 intel_slli_i16x8(i16x8 v, unsigned imm)
 {
@@ -116,25 +58,10 @@ i16x8 intel_srai_i16x8(i16x8 v, unsigned imm)
     }
 }
 
-i16x8 intel_unpacklo_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_unpacklo_epi16(a, b);
-}
-
-i16x8 intel_unpackhi_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_unpackhi_epi16(a, b);
-}
-
-i16x8 intel_packs_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_packs_epi16(a, b);
-}
-
-i16x8 intel_packus_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_packus_epi16(a, b);
-}
+IOITF_BINARY(i16x8, i16x8, intel_unpacklo_i16x8, _mm_unpacklo_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_unpackhi_i16x8, _mm_unpackhi_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_packs_i16x8, _mm_packs_epi16(a, b))
+IOITF_BINARY(i16x8, i16x8, intel_packus_i16x8, _mm_packus_epi16(a, b))
 
 i16x8 intel_shufflelo_i16x8(i16x8 v, unsigned imm)
 {
@@ -175,10 +102,7 @@ i16x8 intel_sra_i16x8(i16x8 a, __m128i count)
     return _mm_sra_epi16(a, count);
 }
 
-i16x8 intel_cmplt_i16x8(i16x8 a, i16x8 b)
-{
-    return _mm_cmplt_epi16(a, b);
-}
+IOITF_BINARY(i16x8, i16x8, intel_cmplt_i16x8, _mm_cmplt_epi16(a, b))
 
 i16x8 intel_set_i16x8(short lane7, short lane6, short lane5, short lane4,
                        short lane3, short lane2, short lane1, short lane0)

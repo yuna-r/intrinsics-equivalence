@@ -1,3 +1,4 @@
+#include "../shortcuts.h"
 #include <altivec.h>
 
 typedef __vector float f32x4;
@@ -22,15 +23,8 @@ f64x2 power_cast_f32x4_f64x2(f32x4 a)
         (unsigned long long)bits[2] | ((unsigned long long)bits[3] << 32)};
 }
 
-i32x4 power_cast_f32x4_i32x4(f32x4 a)
-{
-    return (i32x4)a;
-}
-
-f32x4 power_cast_i32x4_f32x4(i32x4 a)
-{
-    return (f32x4)a;
-}
+IOITF_UNARY(i32x4, f32x4, power_cast_f32x4_i32x4, (i32x4)a)
+IOITF_UNARY(f32x4, i32x4, power_cast_i32x4_f32x4, (f32x4)a)
 
 int power_movemask_f32x4(f32x4 a)
 {
@@ -39,10 +33,7 @@ int power_movemask_f32x4(f32x4 a)
                  ((bits[2] >> 31) << 2) | ((bits[3] >> 31) << 3));
 }
 
-f32x4 power_unpacklo_f32x4(f32x4 a, f32x4 b)
-{
-    return (f32x4){a[0], b[0], a[1], b[1]};
-}
+IOITF_BINARY(f32x4, f32x4, power_unpacklo_f32x4, (f32x4){a[0], b[0], a[1], b[1]})
 
 static unsigned long long widen_f32_bits(unsigned bits)
 {
@@ -81,10 +72,7 @@ f64x2 power_cvt_f32x4_f64x2(f32x4 a)
                            widen_f32_bits(bits[1])};
 }
 
-f64x2 power_cvt_i32x4_f64x2(i32x4 a)
-{
-    return (f64x2){(double)a[0], (double)a[1]};
-}
+IOITF_UNARY(f64x2, i32x4, power_cvt_i32x4_f64x2, (f64x2){(double)a[0], (double)a[1]})
 
 f32x4 power_shuffle_f32x4(f32x4 a, f32x4 b, unsigned imm)
 {
@@ -92,10 +80,7 @@ f32x4 power_shuffle_f32x4(f32x4 a, f32x4 b, unsigned imm)
                     b[(imm >> 4) & 3U], b[(imm >> 6) & 3U]};
 }
 
-f32x4 power_movehl_f32x4(f32x4 a, f32x4 b)
-{
-    return (f32x4){b[2], b[3], a[2], a[3]};
-}
+IOITF_BINARY(f32x4, f32x4, power_movehl_f32x4, (f32x4){b[2], b[3], a[2], a[3]})
 
 static unsigned long long round_shift_even(unsigned long long value,
                                            unsigned shift)
@@ -250,10 +235,7 @@ i32x4 power_cvtt_f32x4_i32x4(f32x4 a)
                     truncate_f32_i32(a[2]), truncate_f32_i32(a[3])};
 }
 
-f32x4 power_add_f32x4(f32x4 a, f32x4 b)
-{
-    return vec_add(a, b);
-}
+IOITF_BINARY(f32x4, f32x4, power_add_f32x4, vec_add(a, b))
 
 static unsigned sqrt_f32_bits(unsigned input, unsigned result)
 {

@@ -1,46 +1,16 @@
+#include "../shortcuts.h"
 #include <emmintrin.h>
 
 typedef __m128i i32x4;
 
-i32x4 intel_add_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_add_epi32(a, b);
-}
-
-i32x4 intel_sub_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_sub_epi32(a, b);
-}
-
-i32x4 intel_and_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_and_si128(a, b);
-}
-
-i32x4 intel_or_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_or_si128(a, b);
-}
-
-i32x4 intel_xor_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_xor_si128(a, b);
-}
-
-i32x4 intel_andnot_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_andnot_si128(a, b);
-}
-
-i32x4 intel_cmpeq_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_cmpeq_epi32(a, b);
-}
-
-i32x4 intel_cmpgt_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_cmpgt_epi32(a, b);
-}
+IOITF_BINARY(i32x4, i32x4, intel_add_i32x4, _mm_add_epi32(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_sub_i32x4, _mm_sub_epi32(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_and_i32x4, _mm_and_si128(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_or_i32x4, _mm_or_si128(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_xor_i32x4, _mm_xor_si128(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_andnot_i32x4, _mm_andnot_si128(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_cmpeq_i32x4, _mm_cmpeq_epi32(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_cmpgt_i32x4, _mm_cmpgt_epi32(a, b))
 
 i32x4 intel_slli_i32x4(i32x4 v, unsigned imm)
 {
@@ -92,25 +62,10 @@ i32x4 intel_shuffle_i32x4(i32x4 v, unsigned imm)
     }
 }
 
-i32x4 intel_unpacklo_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_unpacklo_epi32(a, b);
-}
-
-i32x4 intel_unpackhi_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_unpackhi_epi32(a, b);
-}
-
-i32x4 intel_mul_u32x4(i32x4 a, i32x4 b)
-{
-    return _mm_mul_epu32(a, b);
-}
-
-i32x4 intel_packs_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_packs_epi32(a, b);
-}
+IOITF_BINARY(i32x4, i32x4, intel_unpacklo_i32x4, _mm_unpacklo_epi32(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_unpackhi_i32x4, _mm_unpackhi_epi32(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_mul_u32x4, _mm_mul_epu32(a, b))
+IOITF_BINARY(i32x4, i32x4, intel_packs_i32x4, _mm_packs_epi32(a, b))
 
 i32x4 intel_cvtsi32_i32x4(int value)
 {
@@ -137,15 +92,8 @@ i32x4 intel_sra_i32x4(i32x4 a, __m128i count)
     return _mm_sra_epi32(a, count);
 }
 
-i32x4 intel_cmplt_i32x4(i32x4 a, i32x4 b)
-{
-    return _mm_cmplt_epi32(a, b);
-}
-
-int intel_cvtsi128_i32x4(i32x4 a)
-{
-    return _mm_cvtsi128_si32(a);
-}
+IOITF_BINARY(i32x4, i32x4, intel_cmplt_i32x4, _mm_cmplt_epi32(a, b))
+IOITF_UNARY(int, i32x4, intel_cvtsi128_i32x4, _mm_cvtsi128_si32(a))
 
 i32x4 intel_set_i32x4(int lane3, int lane2, int lane1, int lane0)
 {

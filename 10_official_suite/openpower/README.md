@@ -50,5 +50,8 @@ cmake -S . -B build/native -DCMAKE_BUILD_TYPE=Release
 cmake --build build/native --parallel
 ```
 
-ここは見通し優先のofficial exampleです。共通ABI、入力のdecode、例外観測まで含む
-実際の実装は[`../../adapters/openpower/sse2_pd.c`](../../adapters/openpower/sse2_pd.c)にあります。
+ここは見通し優先のofficial exampleです。単純なvector式は
+[`../shortcuts.h`](../shortcuts.h)で1操作1行に畳み、明示的な丸めやspecial-value処理の
+ような読む価値がある部分だけを普通の関数で残しています。共通ABI、入力のdecode、
+例外観測まで含む実際の実装は
+[`../../adapters/openpower/sse2_pd.c`](../../adapters/openpower/sse2_pd.c)にあります。
