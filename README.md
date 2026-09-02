@@ -60,6 +60,48 @@ Verification metrics
 
 この表もstderrへ出るため、stdoutの最終JSONは従来どおり1行のままです。
 
+続けて、通常実行では負荷の軽い品質メトリクスだけを表示します。すでに読み込んだ
+contractとdevelopment modelから集計するため、追加のbuildやtest実行はありません。
+
+```text
+Quality metrics
+  valid contracts              128 / 128
+  development models           128 / 128
+  standard boundary floors     128 / 128
+  architecture bindings        256 / 256
+  contract drift                       0
+```
+
+coverageやsanitizerまで確認したいときだけ、`--quality`を付けます。
+
+```sh
+ioitf check --quality
+```
+
+このオプションでは通常のequivalence checkに加え、次の重い品質ゲートを順番に実行します。
+
+- Python全回帰テスト + 標準ライブラリtraceによるsource line coverage
+- ASan / UBSanを有効にしたportable C build + CTest
+- Intel x86_64 / OpenPOWER ppc64le official suiteのClang cross build
+
+実行中は`[7/8] Run quality gates`の下に3本の進捗バーを表示します。Pythonは
+テスト件数、sanitizerは3工程、cross buildは12コンパイルを分母に、実測値で
+`0%`から`100%`へ進みます。
+
+```text
+[7/8] Run quality gates
+  [1/3] Python tests + coverage      [=======-----------]  41% 35/85
+  [2/3] C sanitizers                 [============------]  66% 2/3
+  [3/3] Intel + OpenPOWER cross build [===============---]  83% 10/12
+```
+
+ここで出るsource line coverageは、等価性の一致率とは別の値です。Python実装の
+実行可能行のうち回帰テストで通った割合を表し、現在は記録のみで合否基準にはしていません。
+
+結果は`<check output>/quality/summary.json`へ、coverage注釈と各コマンドのlogは
+同じ`quality/`以下へ残ります。3ゲートのどれかが失敗するとコマンドも非0で終了します。
+通常の`ioitf check`ではこれらを実行しないため、普段の速度は変わりません。
+
 `ioitf check`ひとつで、caseの確認、入力生成、両側の実行、答え合わせまで進みます。
 途中の記録は`.ioitf/checks/<timestamp>/`へ残ります。
 
@@ -425,7 +467,7 @@ Development fixtureの成果物を使う場合は`--allow-development-fixtures`�
 - MXCSR、FPSCR、VSCR probeと共有ライブラリの動的ロード監査は未完成です。
 - ppc64le adapterは対応toolchainと実機での確認が残っています。
 - 実機SUTを単一入力で動かすnative `ioitf replay`は未実装です。
-- traceability / coverage artifactは未実装です。
+- native evidenceとcaseを結ぶtraceability artifactは未実装です。
 - 現在のcase packはFP例外観測を無効にしています。
 
 ### 終了コード

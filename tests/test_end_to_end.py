@@ -23,13 +23,14 @@ from ioitf.canonical import (  # noqa: E402
     write_jsonl,
 )
 from ioitf.cases import load_case_definitions  # noqa: E402
-from ioitf.cli import _CheckProgress, main  # noqa: E402
+from ioitf.cli import _CheckProgress, _QualityGateProgress, main  # noqa: E402
 from ioitf.compare import compare_result_records  # noqa: E402
 from ioitf.fixture import run_fixture  # noqa: E402
 from ioitf.generator import generate_artifact  # noqa: E402
 from ioitf.isa import load_isa_registry  # noqa: E402
 from ioitf.records import derive_input_id  # noqa: E402
 from ioitf.report import RecordReport, write_failure_bundle, write_reports  # noqa: E402
+from ioitf.quality import QualityGateUpdate, QualityRun  # noqa: E402
 
 
 class EndToEndTests(unittest.TestCase):
@@ -83,6 +84,10 @@ class EndToEndTests(unittest.TestCase):
             self.assertRegex(progress, r"bit positions\s+30,720")
             self.assertRegex(progress, r"match rate\s+100%")
             self.assertRegex(progress, r"mismatch\s+0")
+            self.assertIn("Quality metrics", progress)
+            self.assertRegex(progress, r"valid contracts\s+128 / 128")
+            self.assertRegex(progress, r"development models\s+128 / 128")
+            self.assertRegex(progress, r"architecture bindings\s+256 / 256")
 
     def test_check_prints_metrics_without_showcase_report(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -111,6 +116,37 @@ class EndToEndTests(unittest.TestCase):
             self.assertRegex(metrics, r"bit positions\s+15,360")
             self.assertRegex(metrics, r"match rate\s+100%")
             self.assertRegex(metrics, r"mismatch\s+0")
+            self.assertIn("Quality metrics", metrics)
+
+    def test_quality_option_is_an_eighth_opt_in_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "quality-check"
+            report = output / "quality" / "summary.json"
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            deep = QualityRun("pass", report, 3, 3, "87.5", 82)
+            with mock.patch("ioitf.cli.run_quality_gates", return_value=deep):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    exit_code = main(
+                        [
+                            "check",
+                            "--project", str(PROJECT / "ioitf.toml"),
+                            "--output", str(output),
+                            "--count-per-case", "1",
+                            "--quality",
+                        ]
+                    )
+            self.assertEqual(exit_code, 0)
+            result = loads(stdout.getvalue().strip())
+            assert isinstance(result, dict)
+            self.assertEqual(result["quality_status"], "pass")
+            self.assertEqual(result["quality_report"], str(report))
+            progress = stderr.getvalue()
+            self.assertIn("[7/8] Run quality gates", progress)
+            self.assertIn("[8/8] PASS - 128 trials", progress)
+            self.assertRegex(progress, r"regression tests\s+82 passed")
+            self.assertRegex(progress, r"source line coverage\s+87.5%")
+            self.assertRegex(progress, r"deep quality gates\s+3 / 3")
 
     def test_check_quiet_keeps_stderr_empty_and_stdout_canonical(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -148,6 +184,33 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("\r[2/7] Generate test vectors", rendered)
         self.assertIn("[======================] 100% 4/4", rendered)
         self.assertIn("done", rendered)
+
+    def test_interactive_progress_can_name_quality_substages(self) -> None:
+        class TTYBuffer(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+        stream = TTYBuffer()
+        progress = _CheckProgress(enabled=True, steps=8, stream=stream)
+        with progress.stage(7, "Run quality gates"):
+            progress.open_details()
+            gates = _QualityGateProgress(
+                enabled=True, interactive=True, stream=stream
+            )
+            gates.update(QualityGateUpdate(1, 3, "Python tests + coverage", 0, 84))
+            gates.update(QualityGateUpdate(1, 3, "Python tests + coverage", 84, 84, "pass"))
+            gates.update(QualityGateUpdate(2, 3, "C sanitizers", 0, 3))
+            gates.update(QualityGateUpdate(2, 3, "C sanitizers", 3, 3, "pass"))
+            gates.update(QualityGateUpdate(3, 3, "Intel + OpenPOWER cross build", 0, 12))
+            gates.update(QualityGateUpdate(3, 3, "Intel + OpenPOWER cross build", 12, 12, "pass"))
+
+        rendered = stream.getvalue()
+        self.assertIn("[7/8] Run quality gates\n", rendered)
+        self.assertIn("[1/3] Python tests + coverage", rendered)
+        self.assertIn("[2/3] C sanitizers", rendered)
+        self.assertIn("[3/3] Intel + OpenPOWER cross build", rendered)
+        self.assertEqual(rendered.count("PASS"), 3)
+        self.assertEqual(rendered.count("100%"), 3)
         self.assertTrue(rendered.endswith("\n"))
 
     def test_fixture_match_tamper_detection_and_failure_bundle(self) -> None:

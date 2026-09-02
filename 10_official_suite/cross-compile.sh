@@ -23,6 +23,15 @@ fi
 
 mkdir -p "$output_dir/intel" "$output_dir/openpower"
 
+completed=0
+progress_total=12
+report_progress() {
+    completed=$((completed + 1))
+    if [ "${IOITF_PROGRESS:-0}" = "1" ]; then
+        printf 'IOITF_PROGRESS %s %s\n' "$completed" "$progress_total"
+    fi
+}
+
 for block in f32x4 f64x2 i8x16 i16x8 i32x4 i64x2; do
     "$compiler" \
         --target=x86_64-unknown-linux-gnu \
@@ -30,6 +39,7 @@ for block in f32x4 f64x2 i8x16 i16x8 i32x4 i64x2; do
         -Wall -Wextra -Wpedantic -Werror \
         -c "$suite_dir/intel/$block.c" \
         -o "$output_dir/intel/$block.o"
+    report_progress
 
     "$compiler" \
         --target=powerpc64le-unknown-linux-gnu \
@@ -37,6 +47,7 @@ for block in f32x4 f64x2 i8x16 i16x8 i32x4 i64x2; do
         -Wall -Wextra -Wpedantic -Werror \
         -c "$suite_dir/openpower/$block.c" \
         -o "$output_dir/openpower/$block.o"
+    report_progress
 done
 
 echo "Cross-compiled official suite:"

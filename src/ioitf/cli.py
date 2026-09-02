@@ -30,6 +30,13 @@ from .generator import DEFAULT_SEED, PROFILE_COUNTS, generate_artifact
 from .isa import ISARegistry, load_isa_registry
 from .metrics import VerificationMetrics, collect_verification_metrics
 from .project import load_project
+from .quality import (
+    QualityGateUpdate,
+    QualityMetrics,
+    QualityRun,
+    collect_quality_metrics,
+    run_quality_gates,
+)
 from .records import derive_input_id
 
 
@@ -78,14 +85,56 @@ def _print_verification_metrics(
     destination.flush()
 
 
+def _print_quality_metrics(
+    metrics: QualityMetrics,
+    *,
+    deep: QualityRun | None = None,
+    stream: TextIO | None = None,
+) -> None:
+    destination = sys.stderr if stream is None else stream
+    bindings = metrics.cases * 2
+    rows = [
+        ("valid contracts", f"{metrics.valid_contracts:,} / {metrics.cases:,}"),
+        ("development models", f"{metrics.development_models:,} / {metrics.cases:,}"),
+        (
+            "standard boundary floors",
+            f"{metrics.standard_boundary_floors:,} / {metrics.cases:,}",
+        ),
+        (
+            "architecture bindings",
+            f"{metrics.architecture_bindings:,} / {bindings:,}",
+        ),
+        ("contract drift", "0"),
+    ]
+    if deep is not None:
+        if deep.tests_run is not None:
+            rows.append(("regression tests", f"{deep.tests_run:,} passed"))
+        if deep.coverage_percent is not None:
+            rows.append(("source line coverage", deep.coverage_percent + "%"))
+        rows.append(
+            ("deep quality gates", f"{deep.passed_gates:,} / {deep.total_gates:,}")
+        )
+    width = max(len(label) for label, _value in rows)
+    print("\nQuality metrics", file=destination)
+    for label, value in rows:
+        print(f"  {label:<{width}}  {value:>12}", file=destination)
+    destination.flush()
+
+
 class _CheckProgress:
     """Small dependency-free progress display that leaves stdout machine-readable."""
 
-    _STEPS = 7
     _BAR_WIDTH = 22
 
-    def __init__(self, *, enabled: bool, stream: TextIO | None = None):
+    def __init__(
+        self,
+        *,
+        enabled: bool,
+        steps: int = 7,
+        stream: TextIO | None = None,
+    ):
         self.enabled = enabled
+        self.steps = steps
         self.stream = sys.stderr if stream is None else stream
         isatty = getattr(self.stream, "isatty", None)
         self.interactive = bool(isatty is not None and isatty())
@@ -113,7 +162,7 @@ class _CheckProgress:
         if self.interactive:
             self._render(force=True)
         else:
-            print(f"[{step}/{self._STEPS}] {label}...", file=self.stream, flush=True)
+            print(f"[{step}/{self.steps}] {label}...", file=self.stream, flush=True)
         try:
             yield self.update
         except BaseException:
@@ -129,8 +178,18 @@ class _CheckProgress:
         if self.interactive:
             self._render()
 
+    def open_details(self) -> None:
+        """Move nested progress below the current interactive stage line."""
+
+        if not self.enabled or not self.interactive:
+            return
+        self._render(force=True)
+        self.stream.write("\n")
+        self.stream.flush()
+        self._last_width = 0
+
     def _format_line(self) -> str:
-        prefix = f"[{self._step}/{self._STEPS}] {self._label:<25}"
+        prefix = f"[{self._step}/{self.steps}] {self._label:<25}"
         if self._total is None:
             return prefix.rstrip()
         percent = 100 if self._total == 0 else self._current * 100 // self._total
@@ -165,10 +224,75 @@ class _CheckProgress:
             return
         state = "done" if success else "failed"
         print(
-            f"[{self._step}/{self._STEPS}] {self._label}: {state} ({elapsed:.1f}s)",
+            f"[{self._step}/{self.steps}] {self._label}: {state} ({elapsed:.1f}s)",
             file=self.stream,
             flush=True,
         )
+
+
+class _QualityGateProgress:
+    """Three persistent child rows for the opt-in quality gates."""
+
+    def __init__(
+        self,
+        *,
+        enabled: bool,
+        interactive: bool,
+        stream: TextIO,
+    ) -> None:
+        self.enabled = enabled
+        self.interactive = interactive
+        self.stream = stream
+        self._active_width = 0
+        self._started: dict[int, float] = {}
+        self._last_percent: dict[int, int] = {}
+
+    def update(self, update: QualityGateUpdate) -> None:
+        if not self.enabled:
+            return
+        if update.gate not in self._started:
+            self._started[update.gate] = time.monotonic()
+        percent = (
+            100
+            if update.total == 0
+            else min(100, update.current * 100 // update.total)
+        )
+        filled = percent * 18 // 100
+        bar = "=" * filled + "-" * (18 - filled)
+        suffix = ""
+        if update.state != "running":
+            elapsed = time.monotonic() - self._started[update.gate]
+            suffix = f"  {update.state.upper()} ({elapsed:.1f}s)"
+        line = (
+            f"  [{update.gate}/{update.gates}] {update.label:<36} "
+            f"[{bar}] {percent:3d}% "
+            f"{update.current:,}/{update.total:,}{suffix}"
+        )
+        if self.interactive:
+            padding = " " * max(0, self._active_width - len(line))
+            if update.state == "running":
+                self.stream.write(("\r" if self._active_width else "") + line + padding)
+                self._active_width = max(self._active_width, len(line))
+            else:
+                self.stream.write("\r" + line + padding + "\n")
+                self._active_width = 0
+            self.stream.flush()
+            return
+        last_percent = self._last_percent.get(update.gate, -10)
+        if (
+            update.state != "running"
+            or percent == 0
+            or percent == 100
+            or percent >= last_percent + 10
+        ):
+            print(line, file=self.stream, flush=True)
+            self._last_percent[update.gate] = percent
+
+    def close(self) -> None:
+        if self.enabled and self.interactive and self._active_width:
+            self.stream.write("\n")
+            self.stream.flush()
+            self._active_width = 0
 
 
 def _validate_cases(args: argparse.Namespace) -> int:
@@ -567,7 +691,7 @@ def _development_check(args: argparse.Namespace) -> int:
     from .fixture import run_fixture
 
     started_at = datetime.now(timezone.utc)
-    progress = _CheckProgress(enabled=not args.quiet)
+    progress = _CheckProgress(enabled=not args.quiet, steps=8 if args.quality else 7)
     with progress.stage(1, "Prepare suite"):
         cases_path, isa_path = _contract_paths(args)
         isa = load_isa_registry(isa_path)
@@ -685,12 +809,42 @@ def _development_check(args: argparse.Namespace) -> int:
             )
             result["showcase_report"] = str(showcase)
 
+    quality_metrics = collect_quality_metrics(cases)
+    quality_run: QualityRun | None = None
+    if args.quality:
+        with progress.stage(7, "Run quality gates"):
+            project_root = Path(args.project).resolve().parent
+            progress.open_details()
+            gate_progress = _QualityGateProgress(
+                enabled=progress.enabled,
+                interactive=progress.interactive,
+                stream=progress.stream,
+            )
+            try:
+                quality_run = run_quality_gates(
+                    project_root,
+                    output / "quality",
+                    progress=gate_progress.update,
+                )
+            finally:
+                gate_progress.close()
+            result["quality_report"] = str(quality_run.report_path)
+            result["quality_status"] = quality_run.status
+            if quality_run.status != "pass":
+                result["status"] = "quality_failed"
+
     status = str(summary["outcome"]).upper()
-    with progress.stage(7, f"{status} - {generated.record_count:,} trials"):
+    if quality_run is not None and quality_run.status != "pass":
+        status = "QUALITY FAILED"
+    final_step = 8 if args.quality else 7
+    with progress.stage(final_step, f"{status} - {generated.record_count:,} trials"):
         pass
     if not args.quiet:
         _print_verification_metrics(metrics)
+        _print_quality_metrics(quality_metrics, deep=quality_run)
     _print(result)
+    if quality_run is not None and quality_run.status != "pass" and exit_code == EXIT_MATCH:
+        return EXIT_MISMATCH
     return exit_code
 
 
@@ -729,6 +883,11 @@ def _parser() -> argparse.ArgumentParser:
         "--showcase-report",
         action="store_true",
         help="write a self-contained presentation-style HTML report",
+    )
+    check.add_argument(
+        "--quality",
+        action="store_true",
+        help="run opt-in coverage, sanitizer, and cross-build quality gates",
     )
     check.add_argument(
         "--quiet",
