@@ -515,8 +515,8 @@ python3 --version
 <details>
 <summary><strong>仕様を読む</strong></summary>
 
-- [まずはこちら: 読みやすい解説版](docs/doc/intel-openpower-intrinsics-equivalence-test-framework-spec-for-everyone.md)
-- [IOITF specification](docs/doc/intel-openpower-intrinsics-equivalence-test-framework-spec.md)
+- [まずはこちら: 読みやすい解説版](https://github.com/yuna-r/ToukaSpecification/blob/a4d888dfdca53d4335a6051bea9df8b9fda9bf35/doc/intel-openpower-intrinsics-equivalence-test-framework-spec-for-everyone.md)
+- [IOITF specification](https://github.com/yuna-r/ToukaSpecification/blob/a4d888dfdca53d4335a6051bea9df8b9fda9bf35/doc/intel-openpower-intrinsics-equivalence-test-framework-spec.md)
 - [Native implementation status](NATIVE_STATUS.md)
 
 ホスト間ではcanonical JSON / JSONLだけを交換します。`__m128i`やOpenPOWERのvector型など、
