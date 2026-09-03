@@ -7,7 +7,9 @@ typedef __m128i i32x4;
 IOITF_BINARY(f64x2, f64x2, intel_add_f64x2, _mm_add_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_sub_f64x2, _mm_sub_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_mul_f64x2, _mm_mul_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_div_f64x2, _mm_div_pd(a, b))
 IOITF_UNARY(f64x2, f64x2, intel_sqrt_f64x2, _mm_sqrt_pd(a))
+IOITF_UNARY(f64x2, f64x2, intel_sqrt_scalar_f64x2, _mm_sqrt_sd(a, a))
 IOITF_BINARY(f64x2, f64x2, intel_and_f64x2, _mm_and_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_or_f64x2, _mm_or_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_xor_f64x2, _mm_xor_pd(a, b))
@@ -17,17 +19,35 @@ f64x2 intel_set1_f64x2(double x)
     return _mm_set1_pd(x);
 }
 
+f64x2 intel_set_scalar_f64x2(double value)
+{
+    return _mm_set_sd(value);
+}
+
+f64x2 intel_load1_f64x2(const void *source)
+{
+    return _mm_load1_pd((const double *)source);
+}
+
 IOITF_BINARY(f64x2, f64x2, intel_move_f64x2, _mm_move_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_unpacklo_f64x2, _mm_unpacklo_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_unpackhi_f64x2, _mm_unpackhi_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpeq_f64x2, _mm_cmpeq_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpeq_scalar_f64x2, _mm_cmpeq_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmplt_f64x2, _mm_cmplt_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmplt_scalar_f64x2, _mm_cmplt_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmple_f64x2, _mm_cmple_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmple_scalar_f64x2, _mm_cmple_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpgt_f64x2, _mm_cmpgt_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpgt_scalar_f64x2, _mm_cmpgt_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpge_f64x2, _mm_cmpge_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpge_scalar_f64x2, _mm_cmpge_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpneq_f64x2, _mm_cmpneq_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpneq_scalar_f64x2, _mm_cmpneq_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpord_f64x2, _mm_cmpord_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpord_scalar_f64x2, _mm_cmpord_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpunord_f64x2, _mm_cmpunord_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpunord_scalar_f64x2, _mm_cmpunord_sd(a, b))
 
 f64x2 intel_shuffle_f64x2(f64x2 a, f64x2 b, unsigned imm)
 {
@@ -43,6 +63,11 @@ f64x2 intel_shuffle_f64x2(f64x2 a, f64x2 b, unsigned imm)
 f64x2 intel_set_f64x2(double high, double low)
 {
     return _mm_set_pd(high, low);
+}
+
+f64x2 intel_setr_f64x2(double low, double high)
+{
+    return _mm_setr_pd(low, high);
 }
 
 f64x2 intel_cast_i64x2_f64x2(__m128i value)
@@ -63,11 +88,17 @@ int intel_movemask_f64x2(f64x2 value)
 }
 
 IOITF_BINARY(f64x2, f64x2, intel_cmpnlt_f64x2, _mm_cmpnlt_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpnlt_scalar_f64x2, _mm_cmpnlt_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpnle_f64x2, _mm_cmpnle_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpnle_scalar_f64x2, _mm_cmpnle_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpngt_f64x2, _mm_cmpngt_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpngt_scalar_f64x2, _mm_cmpngt_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_cmpnge_f64x2, _mm_cmpnge_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_cmpnge_scalar_f64x2, _mm_cmpnge_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_min_f64x2, _mm_min_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_min_scalar_f64x2, _mm_min_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_max_f64x2, _mm_max_pd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_max_scalar_f64x2, _mm_max_sd(a, b))
 IOITF_BINARY(int, f64x2, intel_comieq_f64x2, _mm_comieq_sd(a, b))
 IOITF_BINARY(int, f64x2, intel_comilt_f64x2, _mm_comilt_sd(a, b))
 IOITF_BINARY(int, f64x2, intel_comile_f64x2, _mm_comile_sd(a, b))
@@ -76,11 +107,56 @@ IOITF_BINARY(int, f64x2, intel_comige_f64x2, _mm_comige_sd(a, b))
 IOITF_BINARY(int, f64x2, intel_comineq_f64x2, _mm_comineq_sd(a, b))
 IOITF_UNARY(i32x4, f64x2, intel_cvt_f64x2_i32x4, _mm_cvtpd_epi32(a))
 IOITF_UNARY(i32x4, f64x2, intel_cvtt_f64x2_i32x4, _mm_cvttpd_epi32(a))
+IOITF_UNARY(int, f64x2, intel_cvt_scalar_f64x2_i32, _mm_cvtsd_si32(a))
+IOITF_UNARY(int, f64x2, intel_cvtt_scalar_f64x2_i32, _mm_cvttsd_si32(a))
+IOITF_UNARY(long long, f64x2, intel_cvt_scalar_f64x2_i64, _mm_cvtsd_si64(a))
+IOITF_UNARY(long long, f64x2, intel_cvtt_scalar_f64x2_i64, _mm_cvttsd_si64(a))
 IOITF_BINARY(f64x2, f64x2, intel_add_scalar_f64x2, _mm_add_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_sub_scalar_f64x2, _mm_sub_sd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_mul_scalar_f64x2, _mm_mul_sd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_div_scalar_f64x2, _mm_div_sd(a, b))
 
 f64x2 intel_loadu_f64x2(const void *source)
 {
     return _mm_loadu_pd((const double *)source);
+}
+
+f64x2 intel_load_scalar_f64x2(const void *source)
+{
+    return _mm_load_sd((const double *)source);
+}
+
+f64x2 intel_loadl_f64x2(f64x2 a, const void *source)
+{
+    return _mm_loadl_pd(a, (const double *)source);
+}
+
+f64x2 intel_loadh_f64x2(f64x2 a, const void *source)
+{
+    return _mm_loadh_pd(a, (const double *)source);
+}
+
+f64x2 intel_loadr_f64x2(const void *source)
+{
+    return _mm_loadr_pd((const double *)source);
+}
+
+void intel_store_scalar_f64x2(void *destination, f64x2 a)
+{
+    _mm_store_sd((double *)destination, a);
+}
+
+void intel_storeu_f64x2(void *destination, f64x2 a)
+{
+    _mm_storeu_pd((double *)destination, a);
+}
+
+void intel_storeh_f64x2(void *destination, f64x2 a)
+{
+    _mm_storeh_pd((double *)destination, a);
+}
+
+void intel_storer_f64x2(void *destination, f64x2 a)
+{
+    _mm_storer_pd((double *)destination, a);
 }

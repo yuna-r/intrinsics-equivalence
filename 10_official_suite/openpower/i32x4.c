@@ -101,3 +101,17 @@ i32x4 power_setr_i32x4(int lane0, int lane1, int lane2, int lane3)
 {
     return (i32x4){lane0, lane1, lane2, lane3};
 }
+
+i32x4 power_loadu_i32x4(const void *source)
+{
+    unsigned values[4];
+    __builtin_memcpy(values, source, sizeof(values));
+    return (i32x4)(u32x4){values[0], values[1], values[2], values[3]};
+}
+
+void power_storeu_i32x4(void *destination, i32x4 a)
+{
+    unsigned values[4] = {
+        ((u32x4)a)[0], ((u32x4)a)[1], ((u32x4)a)[2], ((u32x4)a)[3]};
+    __builtin_memcpy(destination, values, sizeof(values));
+}

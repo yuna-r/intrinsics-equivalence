@@ -76,7 +76,7 @@ isa_registry = "isa.json"
         case_names = {
             path.stem for path in (suite / "cases").glob("*.py")
         }
-        self.assertEqual(len(case_names), 176)
+        self.assertEqual(len(case_names), 254)
 
         for role, prefix in (("intel", "intel"), ("openpower", "power")):
             sources = "\n".join(
@@ -85,7 +85,7 @@ isa_registry = "isa.json"
             )
             self.assertNotIn("example_", sources)
             symbol_pattern = (
-                r"[a-z0-9_]+_(?:f32x4|f64x2|[iu]8x16|[iu]16x8|[iu]32x4|[iu]64x2)"
+                r"[a-z0-9_]+_(?:f32x4|f64x2|[iu]8x16|[iu]16x8|[iu]32x4|[iu]64x2|i32|i64)"
             )
             functions = set(
                 re.findall(
@@ -108,7 +108,7 @@ isa_registry = "isa.json"
     def test_official_cases_are_flat_one_file_packs(self) -> None:
         cases = PROJECT / "10_official_suite" / "cases"
         packs = sorted(cases.glob("*.py"))
-        self.assertEqual(len(packs), 176)
+        self.assertEqual(len(packs), 254)
         self.assertFalse(any(path.is_dir() for path in cases.iterdir()))
         for path in packs:
             source = path.read_text(encoding="utf-8")

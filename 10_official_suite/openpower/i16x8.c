@@ -9,6 +9,11 @@ typedef __vector signed int i32x4;
 typedef __vector unsigned int u32x4;
 typedef __vector unsigned long long u64x2;
 
+i16x8 power_set1_i16x8(short value)
+{
+    return vec_splats(value);
+}
+
 IOITF_BINARY(u16x8, u16x8, power_add_i16x8, a + b)
 IOITF_BINARY(u16x8, u16x8, power_sub_i16x8, a - b)
 IOITF_BINARY(u16x8, u16x8, power_adds_i16x8, (u16x8)vec_adds((i16x8)a, (i16x8)b))
@@ -120,6 +125,13 @@ IOITF_BINARY(u16x8, u16x8, power_cmplt_i16x8, (u16x8)vec_cmpgt((i16x8)b, (i16x8)
 
 i16x8 power_set_i16x8(short lane7, short lane6, short lane5, short lane4,
                        short lane3, short lane2, short lane1, short lane0)
+{
+    return (i16x8){lane0, lane1, lane2, lane3,
+                    lane4, lane5, lane6, lane7};
+}
+
+i16x8 power_setr_i16x8(short lane0, short lane1, short lane2, short lane3,
+                        short lane4, short lane5, short lane6, short lane7)
 {
     return (i16x8){lane0, lane1, lane2, lane3,
                     lane4, lane5, lane6, lane7};

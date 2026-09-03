@@ -7,6 +7,34 @@ typedef __vector signed int i32x4;
 typedef __vector unsigned int u32x4;
 typedef __vector unsigned long long u64x2;
 
+f32x4 power_set_f32x4(float lane3, float lane2, float lane1, float lane0)
+{
+    return (f32x4){lane0, lane1, lane2, lane3};
+}
+
+f32x4 power_setr_f32x4(float lane0, float lane1, float lane2, float lane3)
+{
+    return (f32x4){lane0, lane1, lane2, lane3};
+}
+
+f32x4 power_set1_f32x4(float value)
+{
+    return vec_splats(value);
+}
+
+f32x4 power_set_scalar_f32x4(float value)
+{
+    union { float value; unsigned bits; } scalar = {value};
+    return (f32x4)(u32x4){scalar.bits, 0, 0, 0};
+}
+
+f32x4 power_load1_f32x4(const void *source)
+{
+    unsigned value;
+    __builtin_memcpy(&value, source, sizeof(value));
+    return (f32x4)(u32x4){value, value, value, value};
+}
+
 f32x4 power_cast_f64x2_f32x4(f64x2 a)
 {
     u64x2 bits = (u64x2)a;
@@ -74,6 +102,45 @@ f64x2 power_cvt_f32x4_f64x2(f32x4 a)
 }
 
 IOITF_UNARY(f64x2, i32x4, power_cvt_i32x4_f64x2, (f64x2){(double)a[0], (double)a[1]})
+
+static unsigned narrow_f64_bits(unsigned long long bits);
+static unsigned convert_i32_f32_bits(int value);
+
+f32x4 power_cvt_scalar_f64x2_f32x4(f32x4 a, f64x2 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u64x2 b_bits = (u64x2)b;
+    return (f32x4)(u32x4){
+        narrow_f64_bits(b_bits[0]), a_bits[1], a_bits[2], a_bits[3]};
+}
+
+f64x2 power_cvt_scalar_f32x4_f64x2(f64x2 a, f32x4 b)
+{
+    u64x2 a_bits = (u64x2)a;
+    u32x4 b_bits = (u32x4)b;
+    return (f64x2)(u64x2){widen_f32_bits(b_bits[0]), a_bits[1]};
+}
+
+f32x4 power_cvt_i32_f32x4(f32x4 a, int value)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        convert_i32_f32_bits(value), bits[1], bits[2], bits[3]};
+}
+
+f64x2 power_cvt_i32_f64x2(f64x2 a, int value)
+{
+    u64x2 bits = (u64x2)a;
+    union { double value; unsigned long long bits; } converted = {(double)value};
+    return (f64x2)(u64x2){converted.bits, bits[1]};
+}
+
+f64x2 power_cvt_i64_f64x2(f64x2 a, long long value)
+{
+    u64x2 bits = (u64x2)a;
+    union { double value; unsigned long long bits; } converted = {(double)value};
+    return (f64x2)(u64x2){converted.bits, bits[1]};
+}
 
 f32x4 power_shuffle_f32x4(f32x4 a, f32x4 b, unsigned imm)
 {
@@ -238,15 +305,71 @@ i32x4 power_cvtt_f32x4_i32x4(f32x4 a)
                     truncate_f32_i32(a[2]), truncate_f32_i32(a[3])};
 }
 
+IOITF_UNARY(int, f32x4, power_cvt_scalar_f32x4_i32, nearest_f32_i32(a[0]))
+IOITF_UNARY(int, f32x4, power_cvtt_scalar_f32x4_i32, truncate_f32_i32(a[0]))
+
+static int ordered_f32(float a, float b)
+{
+    return a == a && b == b;
+}
+
+IOITF_BINARY(int, f32x4, power_comieq_f32x4, ordered_f32(a[0], b[0]) && a[0] == b[0])
+IOITF_BINARY(int, f32x4, power_comilt_f32x4, ordered_f32(a[0], b[0]) && a[0] < b[0])
+IOITF_BINARY(int, f32x4, power_comile_f32x4, ordered_f32(a[0], b[0]) && a[0] <= b[0])
+IOITF_BINARY(int, f32x4, power_comigt_f32x4, ordered_f32(a[0], b[0]) && a[0] > b[0])
+IOITF_BINARY(int, f32x4, power_comige_f32x4, ordered_f32(a[0], b[0]) && a[0] >= b[0])
+IOITF_BINARY(int, f32x4, power_comineq_f32x4, !ordered_f32(a[0], b[0]) || a[0] != b[0])
+
 IOITF_BINARY(f32x4, f32x4, power_add_f32x4, vec_add(a, b))
 IOITF_BINARY(f32x4, f32x4, power_sub_f32x4, vec_sub(a, b))
 IOITF_BINARY(f32x4, f32x4, power_mul_f32x4, vec_mul(a, b))
+static unsigned div_f32_bits(unsigned a, unsigned b, unsigned result)
+{
+    unsigned a_magnitude = a & 0x7fffffffU;
+    unsigned b_magnitude = b & 0x7fffffffU;
+    int a_nan = (a & 0x7f800000U) == 0x7f800000U &&
+                (a & 0x007fffffU) != 0U;
+    int b_nan = (b & 0x7f800000U) == 0x7f800000U &&
+                (b & 0x007fffffU) != 0U;
+    if (a_nan) {
+        return a | 0x00400000U;
+    }
+    if (b_nan) {
+        return b | 0x00400000U;
+    }
+    if ((a_magnitude == 0U && b_magnitude == 0U) ||
+        (a_magnitude == 0x7f800000U && b_magnitude == 0x7f800000U)) {
+        return 0xffc00000U;
+    }
+    return result;
+}
+
+f32x4 power_div_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    u32x4 result = (u32x4)vec_div(a, b);
+    return (f32x4)(u32x4){
+        div_f32_bits(a_bits[0], b_bits[0], result[0]),
+        div_f32_bits(a_bits[1], b_bits[1], result[1]),
+        div_f32_bits(a_bits[2], b_bits[2], result[2]),
+        div_f32_bits(a_bits[3], b_bits[3], result[3])};
+}
 IOITF_BINARY(f32x4, f32x4, power_add_scalar_f32x4,
              (f32x4){a[0] + b[0], a[1], a[2], a[3]})
 IOITF_BINARY(f32x4, f32x4, power_sub_scalar_f32x4,
              (f32x4){a[0] - b[0], a[1], a[2], a[3]})
 IOITF_BINARY(f32x4, f32x4, power_mul_scalar_f32x4,
              (f32x4){a[0] * b[0], a[1], a[2], a[3]})
+f32x4 power_div_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    union { float value; unsigned bits; } result = {a[0] / b[0]};
+    return (f32x4)(u32x4){
+        div_f32_bits(a_bits[0], b_bits[0], result.bits),
+        a_bits[1], a_bits[2], a_bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_and_f32x4,
              (f32x4)((u32x4)a & (u32x4)b))
 IOITF_BINARY(f32x4, f32x4, power_or_f32x4,
@@ -357,56 +480,139 @@ IOITF_BINARY(f32x4, f32x4, power_cmpeq_f32x4,
                              mask_f32(a[1] == b[1]),
                              mask_f32(a[2] == b[2]),
                              mask_f32(a[3] == b[3])})
+
+f32x4 power_cmpeq_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(a[0] == b[0]), bits[1], bits[2], bits[3]};
+}
+
 IOITF_BINARY(f32x4, f32x4, power_cmpneq_f32x4,
              (f32x4)(u32x4){mask_f32(a[0] != b[0]),
                              mask_f32(a[1] != b[1]),
                              mask_f32(a[2] != b[2]),
                              mask_f32(a[3] != b[3])})
+
+f32x4 power_cmpneq_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(a[0] != b[0]), bits[1], bits[2], bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_cmplt_f32x4,
              (f32x4)(u32x4){mask_f32(a[0] < b[0]),
                              mask_f32(a[1] < b[1]),
                              mask_f32(a[2] < b[2]),
                              mask_f32(a[3] < b[3])})
+
+f32x4 power_cmplt_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(a[0] < b[0]), bits[1], bits[2], bits[3]};
+}
+
 IOITF_BINARY(f32x4, f32x4, power_cmple_f32x4,
              (f32x4)(u32x4){mask_f32(a[0] <= b[0]),
                              mask_f32(a[1] <= b[1]),
                              mask_f32(a[2] <= b[2]),
                              mask_f32(a[3] <= b[3])})
+
+f32x4 power_cmple_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(a[0] <= b[0]), bits[1], bits[2], bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_cmpgt_f32x4,
              (f32x4)(u32x4){mask_f32(a[0] > b[0]),
                              mask_f32(a[1] > b[1]),
                              mask_f32(a[2] > b[2]),
                              mask_f32(a[3] > b[3])})
+
+f32x4 power_cmpgt_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(a[0] > b[0]), bits[1], bits[2], bits[3]};
+}
+
 IOITF_BINARY(f32x4, f32x4, power_cmpge_f32x4,
              (f32x4)(u32x4){mask_f32(a[0] >= b[0]),
                              mask_f32(a[1] >= b[1]),
                              mask_f32(a[2] >= b[2]),
                              mask_f32(a[3] >= b[3])})
+
+f32x4 power_cmpge_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(a[0] >= b[0]), bits[1], bits[2], bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_cmpnlt_f32x4,
              (f32x4)(u32x4){mask_f32(!(a[0] < b[0])),
                              mask_f32(!(a[1] < b[1])),
                              mask_f32(!(a[2] < b[2])),
                              mask_f32(!(a[3] < b[3]))})
+
+f32x4 power_cmpnlt_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(!(a[0] < b[0])), bits[1], bits[2], bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_cmpnle_f32x4,
              (f32x4)(u32x4){mask_f32(!(a[0] <= b[0])),
                              mask_f32(!(a[1] <= b[1])),
                              mask_f32(!(a[2] <= b[2])),
                              mask_f32(!(a[3] <= b[3]))})
+
+f32x4 power_cmpnle_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(!(a[0] <= b[0])), bits[1], bits[2], bits[3]};
+}
+
 IOITF_BINARY(f32x4, f32x4, power_cmpngt_f32x4,
              (f32x4)(u32x4){mask_f32(!(a[0] > b[0])),
                              mask_f32(!(a[1] > b[1])),
                              mask_f32(!(a[2] > b[2])),
                              mask_f32(!(a[3] > b[3]))})
+
+f32x4 power_cmpngt_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(!(a[0] > b[0])), bits[1], bits[2], bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_cmpnge_f32x4,
              (f32x4)(u32x4){mask_f32(!(a[0] >= b[0])),
                              mask_f32(!(a[1] >= b[1])),
                              mask_f32(!(a[2] >= b[2])),
                              mask_f32(!(a[3] >= b[3]))})
+
+f32x4 power_cmpnge_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 bits = (u32x4)a;
+    return (f32x4)(u32x4){
+        mask_f32(!(a[0] >= b[0])), bits[1], bits[2], bits[3]};
+}
 IOITF_BINARY(f32x4, f32x4, power_cmpord_f32x4,
              (f32x4)(u32x4){mask_f32(a[0] == a[0] && b[0] == b[0]),
                              mask_f32(a[1] == a[1] && b[1] == b[1]),
                              mask_f32(a[2] == a[2] && b[2] == b[2]),
                              mask_f32(a[3] == a[3] && b[3] == b[3])})
+
+f32x4 power_cmpord_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    int low_ordered = !nan_f32_bits(a_bits[0]) && !nan_f32_bits(b_bits[0]);
+    return (f32x4)(u32x4){
+        mask_f32(low_ordered), a_bits[1], a_bits[2], a_bits[3]};
+}
 
 f32x4 power_cmpunord_f32x4(f32x4 a, f32x4 b)
 {
@@ -417,4 +623,54 @@ f32x4 power_cmpunord_f32x4(f32x4 a, f32x4 b)
         mask_f32(nan_f32_bits(a_bits[1]) || nan_f32_bits(b_bits[1])),
         mask_f32(nan_f32_bits(a_bits[2]) || nan_f32_bits(b_bits[2])),
         mask_f32(nan_f32_bits(a_bits[3]) || nan_f32_bits(b_bits[3]))};
+}
+
+f32x4 power_cmpunord_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    return (f32x4)(u32x4){
+        mask_f32(nan_f32_bits(a_bits[0]) || nan_f32_bits(b_bits[0])),
+        a_bits[1], a_bits[2], a_bits[3]};
+}
+
+f32x4 power_load_scalar_f32x4(const void *source)
+{
+    unsigned value;
+    __builtin_memcpy(&value, source, sizeof(value));
+    return (f32x4)(u32x4){value, 0, 0, 0};
+}
+
+f32x4 power_loadu_f32x4(const void *source)
+{
+    unsigned values[4];
+    __builtin_memcpy(values, source, sizeof(values));
+    return (f32x4)(u32x4){values[0], values[1], values[2], values[3]};
+}
+
+f32x4 power_loadr_f32x4(const void *source)
+{
+    unsigned values[4];
+    __builtin_memcpy(values, source, sizeof(values));
+    return (f32x4)(u32x4){values[3], values[2], values[1], values[0]};
+}
+
+void power_store_scalar_f32x4(void *destination, f32x4 a)
+{
+    unsigned value = ((u32x4)a)[0];
+    __builtin_memcpy(destination, &value, sizeof(value));
+}
+
+void power_storeu_f32x4(void *destination, f32x4 a)
+{
+    unsigned values[4] = {
+        ((u32x4)a)[0], ((u32x4)a)[1], ((u32x4)a)[2], ((u32x4)a)[3]};
+    __builtin_memcpy(destination, values, sizeof(values));
+}
+
+void power_storer_f32x4(void *destination, f32x4 a)
+{
+    unsigned values[4] = {
+        ((u32x4)a)[3], ((u32x4)a)[2], ((u32x4)a)[1], ((u32x4)a)[0]};
+    __builtin_memcpy(destination, values, sizeof(values));
 }

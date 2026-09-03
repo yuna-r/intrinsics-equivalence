@@ -104,3 +104,13 @@ i32x4 intel_setr_i32x4(int lane0, int lane1, int lane2, int lane3)
 {
     return _mm_setr_epi32(lane0, lane1, lane2, lane3);
 }
+
+i32x4 intel_loadu_i32x4(const void *source)
+{
+    return _mm_loadu_si128((const __m128i *)source);
+}
+
+void intel_storeu_i32x4(void *destination, i32x4 a)
+{
+    _mm_storeu_si128((__m128i *)destination, a);
+}

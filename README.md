@@ -14,7 +14,7 @@
 コマンドは短くしてあります。
 
 現在は算術、乗算、飽和算術、平均/SAD、論理、比較、shift、pack、レーン操作を含む
-176ケースを収録しています。
+254ケースを収録しています。
 
 > ローカル比較に加え、Clangによるx86_64 / ppc64le objectのcross buildまで動きます。
 > 未実装なのはppc64le実機での実行と、結果をnative evidenceとして収集するrunnerです。
@@ -37,7 +37,7 @@ ioitf check
 最後に`"status":"pass"`が出れば成功です。
 
 ```json
-{"case_count":176,"record_count":1408,"status":"pass"}
+{"case_count":254,"record_count":2032,"status":"pass"}
 ```
 
 実行中はvectors生成、Intel / OpenPOWER fixture、比較、レポート生成の進捗が表示されます。
@@ -62,11 +62,11 @@ ioitf check --jobs 8
 
 ```text
 Verification metrics
-  cases                                         176
-  trials                                    176,000
-  implementation-path evaluations          352,000
-  lane verdicts                             906,000
-  bit positions                          21,408,000
+  cases                                         254
+  trials                                    254,000
+  implementation-path evaluations          508,000
+  lane verdicts                           1,131,000
+  bit positions                          30,016,000
   match rate                                   100%
   mismatch                                         0
 ```
@@ -78,10 +78,10 @@ contractとportable modelから集計するため、追加のbuildやtest実行�
 
 ```text
 Quality metrics
-  valid contracts              176 / 176
-  portable models              176 / 176
-  standard boundary floors     176 / 176
-  architecture bindings        352 / 352
+  valid contracts              254 / 254
+  portable models              254 / 254
+  standard boundary floors     254 / 254
+  architecture bindings        508 / 508
   contract drift                       0
 ```
 
@@ -131,8 +131,8 @@ ioitf check --quality
 ioitf check --profile standard --count-per-case 1000 --showcase-report
 ```
 
-176ケース × 1,000 vectorsで176,000 trials。両経路あわせて352,000 fixture evaluations、
-906,000 lane verdicts、21,408,000 paired bit positionsを照合します。境界値や特殊値を含む
+254ケース × 1,000 vectorsで254,000 trials。両経路あわせて508,000 fixture evaluations、
+1,131,000 lane verdicts、30,016,000 paired bit positionsを照合します。境界値や特殊値を含む
 deterministic streamをどれだけ通したかは、レポートの矩形ロードグラフにも出ます。
 
 実行結果の`showcase_report`が生成したファイルです。
@@ -149,7 +149,7 @@ deterministic streamをどれだけ通したかは、レポートの矩形ロー
 ## IntelとOpenPOWERを見比べる
 
 Repositoryの一番上に来る[`10_official_suite/`](10_official_suite/)へ、
-176個のcontractと、Intel / OpenPOWERそれぞれの全176操作をまとめてあります。
+254個のcontractと、Intel / OpenPOWERそれぞれの全254操作をまとめてあります。
 
 | Intel Intrinsic | OpenPOWER / VSX |
 |---|---|
@@ -196,7 +196,7 @@ CASE_ID, MINIMUM_COUNTS, candidates, execute = binary_case(
 ```
 
 共通の境界値、乱数生成、lane処理は見えません。変換、比較、shuffle、packにも
-同じ粒度のfamilyがあり、公式176ケースはすべてこの形に揃っています。
+同じ粒度のfamilyがあり、公式254ケースはすべてこの形に揃っています。
 
 ```sh
 ioitf check
@@ -227,44 +227,47 @@ ctest --test-dir build/native --output-on-failure
 ここから先は、いま必要な項目だけどうぞ。
 
 <details>
-<summary><strong>収録している176ケース</strong></summary>
+<summary><strong>収録している254ケース</strong></summary>
 
-- f64 arithmetic / memory: `_mm_add_pd`、`_mm_add_sd`、`_mm_sub_pd`、`_mm_sub_sd`、
-  `_mm_mul_pd`、`_mm_mul_sd`、`_mm_sqrt_pd`、`_mm_loadu_pd`
+- f64 arithmetic / memory: packed / scalar add、sub、mul、div、sqrt、min、max、
+  load / store（scalar、unaligned、high / low、reverseを含む）
 - f64 bit / lane: `_mm_and_pd`、`_mm_or_pd`、`_mm_xor_pd`、`_mm_set1_pd`、
   `_mm_andnot_pd`、`_mm_move_sd`、`_mm_unpacklo_pd`、`_mm_unpackhi_pd`、
   `_mm_shuffle_pd`、`_mm_set_pd`、cast ×6、movemask、packed min/max
 - f64 comparison: `_mm_cmpeq_pd`、`_mm_cmplt_pd`、`_mm_cmple_pd`、`_mm_cmpgt_pd`、
   `_mm_cmpge_pd`、`_mm_cmpneq_pd`、`_mm_cmpord_pd`、`_mm_cmpunord_pd`、
-  `_mm_cmpnlt_pd`、`_mm_cmpnle_pd`、`_mm_cmpngt_pd`、`_mm_cmpnge_pd`、scalar COMI ×6
-- f32 arithmetic / min-max: packed / scalar add、sub、mul、sqrt、min、max
-- f32 logic / comparison: packed and、or、xor、andnot、ordered / unorderedを含むcompare ×12
-- f32 lane / conversion: `_mm_movemask_ps`、unpack ×2、shuffle、move ×3、
+  `_mm_cmpnlt_pd`、`_mm_cmpnle_pd`、`_mm_cmpngt_pd`、`_mm_cmpnge_pd`、
+  scalar compare ×12、scalar COMI ×6
+- f32 arithmetic / memory: packed / scalar add、sub、mul、div、sqrt、min、max、
+  load / store（scalar、unaligned、reverseを含む）
+- f32 logic / comparison: packed and、or、xor、andnot、packed / scalar compare ×12、
+  scalar COMI ×6
+- f32 lane / conversion: movemask、unpack ×2、shuffle、move ×3、set / setr / set1、
   `_mm_cvtps_pd`、`_mm_cvtpd_ps`、`_mm_cvtepi32_pd`、`_mm_cvtepi32_ps`、
-  `_mm_cvtps_epi32`、`_mm_cvttps_epi32`
-- f64 conversion: `_mm_cvtpd_epi32`、`_mm_cvttpd_epi32`
-- i8 arithmetic / saturation / comparison: `_mm_add_epi8`、`_mm_sub_epi8`、
+  packed / scalar convert（round / truncateを含む）
+- f64 conversion: packed / scalar convert（f32、i32、i64、round / truncateを含む）
+- i8 arithmetic / saturation / comparison / construction: `_mm_add_epi8`、`_mm_sub_epi8`、
   `_mm_adds_epi8`、`_mm_adds_epu8`、`_mm_subs_epi8`、`_mm_subs_epu8`、
   `_mm_cmpeq_epi8`、`_mm_cmpgt_epi8`、`_mm_avg_epu8`、`_mm_sad_epu8`、
-  `_mm_min_epu8`、`_mm_max_epu8`、byte shift ×2、unpack ×2、movemask、signed less-than、set
-- i16 arithmetic / saturation / comparison: `_mm_add_epi16`、`_mm_sub_epi16`、
+  `_mm_min_epu8`、`_mm_max_epu8`、byte shift ×2、unpack ×2、movemask、signed less-than、set、setr、set1
+- i16 arithmetic / saturation / comparison / construction: `_mm_add_epi16`、`_mm_sub_epi16`、
   `_mm_adds_epi16`、`_mm_adds_epu16`、`_mm_subs_epi16`、`_mm_subs_epu16`、
   `_mm_cmpeq_epi16`、`_mm_cmpgt_epi16`、mul ×3、`_mm_madd_epi16`、
   `_mm_avg_epu16`、min/max、immediate shift ×3、vector-count shift ×3、unpack ×2、
-  pack ×2、shuffle ×2、signed less-than、set、extract、insert
+  pack ×2、shuffle ×2、signed less-than、set、setr、set1、extract、insert
 - i32 arithmetic / construction: `_mm_add_epi32`、`_mm_sub_epi32`、`_mm_mul_epu32`、
   `_mm_cvtsi32_si128`、`_mm_set1_epi32`
 - i32 logic: `_mm_and_si128`、`_mm_or_si128`、`_mm_xor_si128`、`_mm_andnot_si128`
 - i32 comparison: `_mm_cmpeq_epi32`、`_mm_cmpgt_epi32`、`_mm_cmplt_epi32`
 - i32 shift: immediate ×3、vector-count ×3
-- i32 lane / pack: `_mm_shuffle_epi32`、`_mm_unpacklo_epi32`、`_mm_unpackhi_epi32`、
-  `_mm_packs_epi32`、low-lane extract、set、setr
+- i32 lane / pack / memory: `_mm_shuffle_epi32`、`_mm_unpacklo_epi32`、`_mm_unpackhi_epi32`、
+  `_mm_packs_epi32`、low-lane extract、set、setr、unaligned load / store
 - i64 arithmetic / lane: `_mm_add_epi64`、`_mm_sub_epi64`、shift ×2、unpack ×2、
   `_mm_move_epi64`、`_mm_cvtsi64_si128`、`_mm_set1_epi64x`、vector-count shift ×2、
-  low-lane extract、set
+  low-lane extract、set、low-lane load / store
 
-176ケースすべてをportable fixtureで確認でき、公式Intel/OpenPOWER sourceにも
-全176操作が揃っています。
+254ケースすべてをportable fixtureで確認でき、公式Intel/OpenPOWER sourceにも
+全254操作が揃っています。
 
 </details>
 
@@ -404,7 +407,7 @@ Frameworkとテストsuiteは分けてあります。
 
 ```text
 intrinsics-equivalence/
-├── 10_official_suite/     # 176 cases + Intel/OpenPOWER各176操作
+├── 10_official_suite/     # 254 cases + Intel/OpenPOWER各254操作
 ├── src/ioitf/             # CLIとartifact処理
 ├── adapters/              # native / portable adapter
 ├── contracts/             # ISA registry

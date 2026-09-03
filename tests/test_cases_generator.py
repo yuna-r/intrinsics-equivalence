@@ -19,7 +19,16 @@ from ioitf.canonical import (  # noqa: E402
     sha256_file,
 )
 from ioitf.cases import load_case_definitions, validate_case_definition  # noqa: E402
-from ioitf.casepack_families import binary_case  # noqa: E402
+from ioitf.casepack_families import (  # noqa: E402
+    binary_case,
+    comi_f32_case,
+    float_binary_case,
+    float_compare_case,
+    float_to_scalar_case,
+    memory_load_case,
+    memory_store_case,
+    scalar_conversion_case,
+)
 from ioitf.development import load_development_case, scalar, vector  # noqa: E402
 from ioitf.errors import ValidationError  # noqa: E402
 from ioitf.generator import SplitMix64, generate_artifact  # noqa: E402
@@ -66,68 +75,126 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.cast.i32x4.f32x4",
                 "sse2.cast.i64x2.f64x2",
                 "sse2.cmpeq.f32x4.default",
+                "sse2.cmpeq.f32x4.scalar",
                 "sse2.cmpeq.f64x2.default",
+                "sse2.cmpeq.f64x2.scalar",
                 "sse2.cmpeq.i16x8.default",
                 "sse2.cmpeq.i32x4.default",
                 "sse2.cmpeq.i8x16.default",
                 "sse2.cmpge.f32x4.default",
+                "sse2.cmpge.f32x4.scalar",
                 "sse2.cmpge.f64x2.default",
+                "sse2.cmpge.f64x2.scalar",
                 "sse2.cmpgt.f32x4.default",
+                "sse2.cmpgt.f32x4.scalar",
                 "sse2.cmpgt.f64x2.default",
+                "sse2.cmpgt.f64x2.scalar",
                 "sse2.cmpgt.i16x8.default",
                 "sse2.cmpgt.i32x4.default",
                 "sse2.cmpgt.i8x16.default",
                 "sse2.cmple.f32x4.default",
+                "sse2.cmple.f32x4.scalar",
                 "sse2.cmple.f64x2.default",
+                "sse2.cmple.f64x2.scalar",
                 "sse2.cmplt.f32x4.default",
+                "sse2.cmplt.f32x4.scalar",
                 "sse2.cmplt.f64x2.default",
+                "sse2.cmplt.f64x2.scalar",
                 "sse2.cmplt.i16x8.default",
                 "sse2.cmplt.i32x4.default",
                 "sse2.cmplt.i8x16.default",
                 "sse2.cmpneq.f32x4.default",
+                "sse2.cmpneq.f32x4.scalar",
                 "sse2.cmpneq.f64x2.default",
+                "sse2.cmpneq.f64x2.scalar",
                 "sse2.cmpnge.f32x4.default",
+                "sse2.cmpnge.f32x4.scalar",
                 "sse2.cmpnge.f64x2.default",
+                "sse2.cmpnge.f64x2.scalar",
                 "sse2.cmpngt.f32x4.default",
+                "sse2.cmpngt.f32x4.scalar",
                 "sse2.cmpngt.f64x2.default",
+                "sse2.cmpngt.f64x2.scalar",
                 "sse2.cmpnle.f32x4.default",
+                "sse2.cmpnle.f32x4.scalar",
                 "sse2.cmpnle.f64x2.default",
+                "sse2.cmpnle.f64x2.scalar",
                 "sse2.cmpnlt.f32x4.default",
+                "sse2.cmpnlt.f32x4.scalar",
                 "sse2.cmpnlt.f64x2.default",
+                "sse2.cmpnlt.f64x2.scalar",
                 "sse2.cmpord.f32x4.default",
+                "sse2.cmpord.f32x4.scalar",
                 "sse2.cmpord.f64x2.default",
+                "sse2.cmpord.f64x2.scalar",
                 "sse2.cmpunord.f32x4.default",
+                "sse2.cmpunord.f32x4.scalar",
                 "sse2.cmpunord.f64x2.default",
+                "sse2.cmpunord.f64x2.scalar",
+                "sse2.comieq.f32x4.scalar",
                 "sse2.comieq.f64x2.scalar",
+                "sse2.comige.f32x4.scalar",
                 "sse2.comige.f64x2.scalar",
+                "sse2.comigt.f32x4.scalar",
                 "sse2.comigt.f64x2.scalar",
+                "sse2.comile.f32x4.scalar",
                 "sse2.comile.f64x2.scalar",
+                "sse2.comilt.f32x4.scalar",
                 "sse2.comilt.f64x2.scalar",
+                "sse2.comineq.f32x4.scalar",
                 "sse2.comineq.f64x2.scalar",
                 "sse2.cvt.f32x4.f64x2",
+                "sse2.cvt.f32x4.f64x2.scalar",
+                "sse2.cvt.f32x4.i32.scalar",
                 "sse2.cvt.f32x4.i32x4",
                 "sse2.cvt.f64x2.f32x4",
+                "sse2.cvt.f64x2.f32x4.scalar",
+                "sse2.cvt.f64x2.i32.scalar",
                 "sse2.cvt.f64x2.i32x4",
+                "sse2.cvt.f64x2.i64.scalar",
+                "sse2.cvt.i32.f32x4.scalar",
+                "sse2.cvt.i32.f64x2.scalar",
                 "sse2.cvt.i32x4.f32x4",
                 "sse2.cvt.i32x4.f64x2",
+                "sse2.cvt.i64.f64x2.scalar",
                 "sse2.cvtsi128.i32x4.low",
                 "sse2.cvtsi128.i64x2.low",
                 "sse2.cvtsi32.i32x4.default",
                 "sse2.cvtsi64.i64x2.default",
+                "sse2.cvtt.f32x4.i32.scalar",
                 "sse2.cvtt.f32x4.i32x4",
+                "sse2.cvtt.f64x2.i32.scalar",
                 "sse2.cvtt.f64x2.i32x4",
+                "sse2.cvtt.f64x2.i64.scalar",
+                "sse2.div.f32x4.default",
+                "sse2.div.f32x4.scalar",
+                "sse2.div.f64x2.default",
+                "sse2.div.f64x2.scalar",
                 "sse2.extract.i16x8.imm8",
                 "sse2.insert.i16x8.imm8",
+                "sse2.load.f32x4.scalar",
+                "sse2.load.f64x2.scalar",
+                "sse2.load1.f32x4.broadcast",
+                "sse2.load1.f64x2.broadcast",
+                "sse2.loadh.f64x2.preserve-low",
+                "sse2.loadl.f64x2.preserve-high",
+                "sse2.loadl.i64x2.zero-high",
+                "sse2.loadr.f32x4.reverse",
+                "sse2.loadr.f64x2.reverse",
+                "sse2.loadu.f32x4.default",
                 "sse2.loadu.f64x2.default",
+                "sse2.loadu.i32x4.default",
                 "sse2.madd.i16x8.default",
                 "sse2.max.f32x4.default",
                 "sse2.max.f32x4.scalar",
                 "sse2.max.f64x2.default",
+                "sse2.max.f64x2.scalar",
                 "sse2.max.i16x8.default",
                 "sse2.max.u8x16.default",
                 "sse2.min.f32x4.default",
                 "sse2.min.f32x4.scalar",
                 "sse2.min.f64x2.default",
+                "sse2.min.f64x2.scalar",
                 "sse2.min.i16x8.default",
                 "sse2.min.u8x16.default",
                 "sse2.move.f32x4.default",
@@ -153,15 +220,25 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.packs.i32x4.default",
                 "sse2.packus.i16x8.default",
                 "sse2.sad.u8x16.default",
+                "sse2.set.f32x4.high-low",
+                "sse2.set.f32x4.scalar",
                 "sse2.set.f64x2.high-low",
+                "sse2.set.f64x2.scalar",
                 "sse2.set.i16x8.high-low",
                 "sse2.set.i32x4.high-low",
                 "sse2.set.i64x2.high-low",
                 "sse2.set.i8x16.high-low",
+                "sse2.set1.f32x4.default",
                 "sse2.set1.f64x2.default",
+                "sse2.set1.i16x8.default",
                 "sse2.set1.i32x4.default",
                 "sse2.set1.i64x2.default",
+                "sse2.set1.i8x16.default",
+                "sse2.setr.f32x4.low-high",
+                "sse2.setr.f64x2.low-high",
+                "sse2.setr.i16x8.low-high",
                 "sse2.setr.i32x4.low-high",
+                "sse2.setr.i8x16.low-high",
                 "sse2.shuffle.f32x4.imm8",
                 "sse2.shuffle.f64x2.imm8",
                 "sse2.shuffle.i32x4.imm8",
@@ -177,6 +254,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.sqrt.f32x4.default",
                 "sse2.sqrt.f32x4.scalar",
                 "sse2.sqrt.f64x2.default",
+                "sse2.sqrt.f64x2.scalar",
                 "sse2.sra.i16x8.vector-count",
                 "sse2.sra.i32x4.vector-count",
                 "sse2.srai.i16x8.imm8",
@@ -188,6 +266,15 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.srli.i16x8.imm8",
                 "sse2.srli.i32x4.imm8",
                 "sse2.srli.i64x2.imm8",
+                "sse2.store.f32x4.scalar",
+                "sse2.store.f64x2.scalar",
+                "sse2.storeh.f64x2.high",
+                "sse2.storel.i64x2.low",
+                "sse2.storer.f32x4.reverse",
+                "sse2.storer.f64x2.reverse",
+                "sse2.storeu.f32x4.default",
+                "sse2.storeu.f64x2.default",
+                "sse2.storeu.i32x4.default",
                 "sse2.sub.f32x4.default",
                 "sse2.sub.f32x4.scalar",
                 "sse2.sub.f64x2.default",
@@ -308,6 +395,347 @@ class CaseAndGeneratorTests(unittest.TestCase):
                     execute(record), {"return": vector(element, (expected,))}
                 )
 
+    def test_float_division_models_ieee_edges_and_nearest_even_bits(self) -> None:
+        _, _, _, execute = float_binary_case("test.div", "f32x4", "/")
+        record = {
+            "operands": {
+                "a": vector("f32", (0x3F800000, 0, 0x80000000, 0x7F800001)),
+                "b": vector("f32", (0x40400000, 0, 0x40000000, 0x3F800000)),
+            }
+        }
+        self.assertEqual(
+            execute(record),
+            {
+                "return": vector(
+                    "f32", (0x3EAAAAAB, 0xFFC00000, 0x80000000, 0x7FC00001)
+                )
+            },
+        )
+
+    def test_scalar_float_compare_masks_low_lane_and_preserves_upper_bits(self) -> None:
+        record = {
+            "operands": {
+                "a": vector("f32", (0x7FC00042, 0x80000000, 1, 0xFFFFFFFF)),
+                "b": vector("f32", (0x3F800000, 0, 0, 0)),
+            }
+        }
+        expected = (
+            ("==", 0),
+            ("!=", 0xFFFFFFFF),
+            ("<", 0),
+            ("<=", 0),
+            ("!<", 0xFFFFFFFF),
+            ("!<=", 0xFFFFFFFF),
+            ("!>", 0xFFFFFFFF),
+            (">", 0),
+            (">=", 0),
+            ("!>=", 0xFFFFFFFF),
+            ("ord", 0),
+            ("unord", 0xFFFFFFFF),
+        )
+        for predicate, expected_low in expected:
+            with self.subTest(predicate=predicate):
+                _, _, _, execute = float_compare_case(
+                    "test.compare", "f32x4", predicate, scalar_only=True
+                )
+                self.assertEqual(
+                    execute(record),
+                    {
+                        "return": vector(
+                            "f32", (expected_low, 0x80000000, 1, 0xFFFFFFFF)
+                        )
+                    },
+                )
+
+    def test_comi_f32_uses_low_lane_and_treats_nan_as_unordered(self) -> None:
+        unordered = {
+            "operands": {
+                "a": vector("f32", (0x7FC00042, 0, 0x7F800000, 0xFFFFFFFF)),
+                "b": vector("f32", (0x3F800000, 0xFFFFFFFF, 0, 0)),
+            }
+        }
+        for predicate, expected in {
+            "eq": 0,
+            "lt": 0,
+            "le": 0,
+            "gt": 0,
+            "ge": 0,
+            "neq": 1,
+        }.items():
+            with self.subTest(predicate=predicate):
+                _, _, _, execute = comi_f32_case(
+                    "test.comi.f32", predicate
+                )
+                self.assertEqual(
+                    execute(unordered), {"return": scalar("i32", expected)}
+                )
+
+        _, _, _, equal = comi_f32_case("test.comi.zero", "eq")
+        self.assertEqual(
+            equal(
+                {
+                    "operands": {
+                        "a": vector("f32", (0x00000000, 1, 2, 3)),
+                        "b": vector("f32", (0x80000000, 4, 5, 6)),
+                    }
+                }
+            ),
+            {"return": scalar("i32", 1)},
+        )
+
+    def test_scalar_conversion_replaces_only_lane_zero(self) -> None:
+        _, _, _, narrow = scalar_conversion_case(
+            "test.narrow", "f64x2", "f32x4"
+        )
+        narrow_record = {
+            "operands": {
+                "a": vector("f32", (0, 0x80000000, 1, 0xFFFFFFFF)),
+                "b": vector("f64", (0x7FF0000000000001, 0)),
+            }
+        }
+        self.assertEqual(
+            narrow(narrow_record),
+            {"return": vector("f32", (0x7FC00000, 0x80000000, 1, 0xFFFFFFFF))},
+        )
+
+        _, _, _, convert_i64 = scalar_conversion_case(
+            "test.i64", "i64", "f64x2"
+        )
+        integer_record = {
+            "operands": {
+                "a": vector("f64", (0, 0x7FF8000000000042)),
+                "value": scalar("i64", 0x7FFFFFFFFFFFFFFF),
+            }
+        }
+        self.assertEqual(
+            convert_i64(integer_record),
+            {
+                "return": vector(
+                    "f64", (0x43E0000000000000, 0x7FF8000000000042)
+                )
+            },
+        )
+
+    def test_float_to_scalar_rounding_and_invalid_results(self) -> None:
+        _, _, _, nearest_i32 = float_to_scalar_case(
+            "test.nearest.i32", "f32x4", "i32"
+        )
+        self.assertEqual(
+            nearest_i32(
+                {
+                    "operands": {
+                        "a": vector("f32", (0x40200000, 1, 2, 3)),
+                    }
+                }
+            ),
+            {"return": scalar("i32", 2)},
+        )
+
+        _, _, _, truncate_i32 = float_to_scalar_case(
+            "test.truncate.i32", "f64x2", "i32", truncate=True
+        )
+        self.assertEqual(
+            truncate_i32(
+                {
+                    "operands": {
+                        "a": vector("f64", (0xBFFC000000000000, 0x7FF8000000000042)),
+                    }
+                }
+            ),
+            {"return": scalar("i32", 0xFFFFFFFF)},
+        )
+
+        _, _, _, nearest_i64 = float_to_scalar_case(
+            "test.invalid.i64", "f64x2", "i64"
+        )
+        self.assertEqual(
+            nearest_i64(
+                {
+                    "operands": {
+                        "a": vector("f64", (0x7FF8000000000042, 0)),
+                    }
+                }
+            ),
+            {"return": scalar("i64", 0x8000000000000000)},
+        )
+
+    def test_memory_load_modes_zero_preserve_and_reverse_lanes(self) -> None:
+        raw = bytes.fromhex("efcdab89674523011032547698badcfe")
+        observed = {"buf0": {"byte_offset": 0, "bytes": f"0x{raw.hex()}"}}
+        scenarios = (
+            ("f32x4", "scalar", vector("f32", (0x89ABCDEF, 0, 0, 0))),
+            (
+                "f32x4",
+                "broadcast",
+                vector("f32", (0x89ABCDEF,) * 4),
+            ),
+            (
+                "f32x4",
+                "all",
+                vector("f32", (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98)),
+            ),
+            (
+                "f32x4",
+                "reverse",
+                vector("f32", (0xFEDCBA98, 0x76543210, 0x01234567, 0x89ABCDEF)),
+            ),
+            (
+                "f64x2",
+                "scalar",
+                vector("f64", (0x0123456789ABCDEF, 0)),
+            ),
+            (
+                "f64x2",
+                "broadcast",
+                vector("f64", (0x0123456789ABCDEF,) * 2),
+            ),
+            (
+                "f64x2",
+                "low",
+                vector("f64", (0x0123456789ABCDEF, 0x8000000000000000)),
+            ),
+            (
+                "f64x2",
+                "high",
+                vector("f64", (0x7FF8000000000042, 0x0123456789ABCDEF)),
+            ),
+            (
+                "i64x2",
+                "scalar",
+                vector("i64", (0x0123456789ABCDEF, 0)),
+            ),
+            (
+                "i32x4",
+                "all",
+                vector("i32", (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98)),
+            ),
+            (
+                "f64x2",
+                "reverse",
+                vector("f64", (0xFEDCBA9876543210, 0x0123456789ABCDEF)),
+            ),
+        )
+        for shape, mode, expected in scenarios:
+            with self.subTest(shape=shape, mode=mode):
+                _, _, _, execute = memory_load_case(
+                    "test.memory.load", shape, mode
+                )
+                operands = {"source": {"buffer": "buf0", "offset": 0}}
+                if mode in {"low", "high"}:
+                    operands["a"] = vector(
+                        "f64", (0x7FF8000000000042, 0x8000000000000000)
+                    )
+                actual = execute(
+                    {
+                        "buffers": {
+                            "buf0": {"alignment": 16, "bytes": f"0x{raw.hex()}"}
+                        },
+                        "operands": operands,
+                    }
+                )
+                self.assertEqual(actual, {"buffers": observed, "return": expected})
+
+    def test_memory_store_modes_write_only_selected_lane_bytes(self) -> None:
+        original = bytes(range(32))
+        scenarios = (
+            ("f32x4", "low", 3, (0x89ABCDEF, 1, 2, 3), (0x89ABCDEF,)),
+            (
+                "f32x4",
+                "all",
+                3,
+                (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98),
+                (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98),
+            ),
+            (
+                "f32x4",
+                "reverse",
+                0,
+                (0x89ABCDEF, 0x01234567, 0x76543210, 0xFEDCBA98),
+                (0xFEDCBA98, 0x76543210, 0x01234567, 0x89ABCDEF),
+            ),
+            (
+                "f64x2",
+                "low",
+                3,
+                (0x0123456789ABCDEF, 0xFEDCBA9876543210),
+                (0x0123456789ABCDEF,),
+            ),
+            (
+                "f64x2",
+                "high",
+                3,
+                (0x0123456789ABCDEF, 0xFEDCBA9876543210),
+                (0xFEDCBA9876543210,),
+            ),
+            (
+                "f64x2",
+                "all",
+                3,
+                (0x0123456789ABCDEF, 0xFEDCBA9876543210),
+                (0x0123456789ABCDEF, 0xFEDCBA9876543210),
+            ),
+            (
+                "i64x2",
+                "low",
+                3,
+                (0x8000000000000000, 0x7FFFFFFFFFFFFFFF),
+                (0x8000000000000000,),
+            ),
+            (
+                "i32x4",
+                "all",
+                3,
+                (0x80000000, 0x7FFFFFFF, 0xFFFFFFFF, 0),
+                (0x80000000, 0x7FFFFFFF, 0xFFFFFFFF, 0),
+            ),
+            (
+                "f64x2",
+                "reverse",
+                0,
+                (0x0123456789ABCDEF, 0xFEDCBA9876543210),
+                (0xFEDCBA9876543210, 0x0123456789ABCDEF),
+            ),
+        )
+        for shape, mode, offset, values, selected in scenarios:
+            with self.subTest(shape=shape, mode=mode):
+                _, _, _, execute = memory_store_case(
+                    "test.memory.store", shape, mode
+                )
+                element = shape.split("x", 1)[0]
+                width = int(element[1:]) // 8
+                expected = bytearray(original)
+                payload = b"".join(
+                    value.to_bytes(width, "little") for value in selected
+                )
+                expected[offset:offset + len(payload)] = payload
+                self.assertEqual(
+                    execute(
+                        {
+                            "buffers": {
+                                "buf0": {
+                                    "alignment": 16,
+                                    "bytes": f"0x{original.hex()}",
+                                }
+                            },
+                            "operands": {
+                                "destination": {
+                                    "buffer": "buf0",
+                                    "offset": offset,
+                                },
+                                "a": vector(element, values),
+                            },
+                        }
+                    ),
+                    {
+                        "buffers": {
+                            "buf0": {
+                                "byte_offset": 0,
+                                "bytes": f"0x{bytes(expected).hex()}",
+                            }
+                        }
+                    },
+                )
+
     def test_scalar_helper_formats_every_supported_width(self) -> None:
         expected = {
             "f32": "0xffffffff",
@@ -385,7 +813,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 880)
+            self.assertEqual(first.record_count, 1270)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -964,6 +1392,81 @@ class CaseAndGeneratorTests(unittest.TestCase):
             execute("sse2.setr.i32x4.low-high", setr_operands),
             {"return": vector("i32", (10, 11, 12, 13))},
         )
+        for element, lanes, width in (("i16", 8, 16), ("i8", 16, 8)):
+            values = tuple(
+                (lane * 0x31 + (1 << (width - 1))) & ((1 << width) - 1)
+                for lane in range(lanes)
+            )
+            operands = {
+                f"lane{lane}": scalar(element, value)
+                for lane, value in enumerate(values)
+            }
+            self.assertEqual(
+                execute(f"sse2.setr.{element}x{lanes}.low-high", operands),
+                {"return": vector(element, values)},
+            )
+
+        for case_id, element, lanes, value in (
+            ("sse2.set.f32x4.scalar", "f32", 4, 0x7FC00042),
+            ("sse2.set.f64x2.scalar", "f64", 2, 0x8000000000000000),
+        ):
+            self.assertEqual(
+                execute(case_id, {"value": scalar(element, value)}),
+                {"return": vector(element, (value,) + (0,) * (lanes - 1))},
+            )
+
+        f32_high_low = {
+            "lane3": scalar("f32", 0x7FC00042),
+            "lane2": scalar("f32", 0x80000000),
+            "lane1": scalar("f32", 0x3F800000),
+            "lane0": scalar("f32", 0xFF800000),
+        }
+        self.assertEqual(
+            execute("sse2.set.f32x4.high-low", f32_high_low),
+            {
+                "return": vector(
+                    "f32", (0xFF800000, 0x3F800000, 0x80000000, 0x7FC00042)
+                )
+            },
+        )
+        self.assertEqual(
+            execute(
+                "sse2.setr.f32x4.low-high",
+                {
+                    f"lane{lane}": f32_high_low[f"lane{3 - lane}"]
+                    for lane in range(4)
+                },
+            ),
+            {
+                "return": vector(
+                    "f32", (0x7FC00042, 0x80000000, 0x3F800000, 0xFF800000)
+                )
+            },
+        )
+        self.assertEqual(
+            execute(
+                "sse2.setr.f64x2.low-high",
+                {
+                    "lane0": scalar("f64", 0x7FF8000000000042),
+                    "lane1": scalar("f64", 0x8000000000000000),
+                },
+            ),
+            {
+                "return": vector(
+                    "f64", (0x7FF8000000000042, 0x8000000000000000)
+                )
+            },
+        )
+        for case_id, element, lanes, value in (
+            ("sse2.set1.f32x4.default", "f32", 4, 0x7FC00042),
+            ("sse2.set1.i16x8.default", "i16", 8, 0x8000),
+            ("sse2.set1.i8x16.default", "i8", 16, 0x80),
+        ):
+            with self.subTest(case_id=case_id):
+                self.assertEqual(
+                    execute(case_id, {"value": scalar(element, value)}),
+                    {"return": vector(element, (value,) * lanes)},
+                )
 
         i16_source = vector("i16", (0x1000, 0x2111, 0x3222, 0x4333, 0x5444, 0x6555, 0x7666, 0x8777))
         self.assertEqual(

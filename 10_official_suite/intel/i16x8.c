@@ -3,6 +3,11 @@
 
 typedef __m128i i16x8;
 
+i16x8 intel_set1_i16x8(short value)
+{
+    return _mm_set1_epi16(value);
+}
+
 IOITF_BINARY(i16x8, i16x8, intel_add_i16x8, _mm_add_epi16(a, b))
 IOITF_BINARY(i16x8, i16x8, intel_sub_i16x8, _mm_sub_epi16(a, b))
 IOITF_BINARY(i16x8, i16x8, intel_adds_i16x8, _mm_adds_epi16(a, b))
@@ -109,6 +114,13 @@ i16x8 intel_set_i16x8(short lane7, short lane6, short lane5, short lane4,
 {
     return _mm_set_epi16(lane7, lane6, lane5, lane4,
                          lane3, lane2, lane1, lane0);
+}
+
+i16x8 intel_setr_i16x8(short lane0, short lane1, short lane2, short lane3,
+                        short lane4, short lane5, short lane6, short lane7)
+{
+    return _mm_setr_epi16(lane0, lane1, lane2, lane3,
+                          lane4, lane5, lane6, lane7);
 }
 
 unsigned intel_extract_i16x8(i16x8 a, unsigned imm)

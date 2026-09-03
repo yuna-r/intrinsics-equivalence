@@ -50,6 +50,29 @@ def collect_verification_metrics(
     for case in ordered_cases:
         return_shape = case.signature["return"]
         assert isinstance(return_shape, dict)
+        if return_shape["type"] == "void":
+            memory = case.data.get("memory_contract")
+            if not isinstance(memory, dict):
+                raise ValueError(
+                    "void-return verification metrics require memory writes"
+                )
+            write_ranges = []
+            for contract in memory.values():
+                if isinstance(contract, dict):
+                    ranges = contract.get("write_ranges", [])
+                    if isinstance(ranges, list):
+                        write_ranges.extend(ranges)
+            if not write_ranges:
+                raise ValueError(
+                    "void-return verification metrics require memory writes"
+                )
+            lanes_per_sweep += len(write_ranges)
+            bits_per_sweep += sum(
+                int(item["byte_length"]) * 8
+                for item in write_ranges
+                if isinstance(item, dict)
+            )
+            continue
         lanes = int(return_shape.get("lanes", 1))
         if lanes < 1:
             raise ValueError("verification return-vector lanes must be positive")

@@ -65,3 +65,16 @@ i64x2 power_set_i64x2(long long high, long long low)
 {
     return (i64x2){low, high};
 }
+
+i64x2 power_loadl_i64x2(const void *source)
+{
+    unsigned long long value;
+    __builtin_memcpy(&value, source, sizeof(value));
+    return (i64x2)(u64x2){value, 0};
+}
+
+void power_storel_i64x2(void *destination, i64x2 a)
+{
+    unsigned long long value = ((u64x2)a)[0];
+    __builtin_memcpy(destination, &value, sizeof(value));
+}

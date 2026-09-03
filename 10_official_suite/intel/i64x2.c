@@ -66,3 +66,13 @@ i64x2 intel_set_i64x2(long long high, long long low)
 {
     return _mm_set_epi64x(high, low);
 }
+
+i64x2 intel_loadl_i64x2(const void *source)
+{
+    return _mm_loadl_epi64((const __m128i *)source);
+}
+
+void intel_storel_i64x2(void *destination, i64x2 a)
+{
+    _mm_storel_epi64((__m128i *)destination, a);
+}

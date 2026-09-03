@@ -191,6 +191,104 @@ def _float_to_bits(element: str, value: float) -> int:
         return infinity | ((1 << (width - 1)) if math.copysign(1.0, value) < 0.0 else 0)
 
 
+def _round_ratio_even(numerator: int, denominator: int, shift: int) -> int:
+    if shift >= 0:
+        numerator <<= shift
+    else:
+        denominator <<= -shift
+    quotient, remainder = divmod(numerator, denominator)
+    doubled = remainder << 1
+    if doubled > denominator or (doubled == denominator and quotient & 1):
+        quotient += 1
+    return quotient
+
+
+def _divide_float_bits(element: str, left: int, right: int) -> int:
+    """Return the SSE nearest-even quotient, including its NaN bit rules."""
+
+    width = int(element[1:])
+    fraction_width = 23 if width == 32 else 52
+    exponent_width = 8 if width == 32 else 11
+    bias = (1 << (exponent_width - 1)) - 1
+    sign = (left ^ right) & (1 << (width - 1))
+    fraction_mask = (1 << fraction_width) - 1
+    exponent_max = (1 << exponent_width) - 1
+    exponent_mask = exponent_max << fraction_width
+    quiet_bit = 1 << (fraction_width - 1)
+    indefinite = (1 << (width - 1)) | exponent_mask | quiet_bit
+
+    left_exponent = (left & exponent_mask) >> fraction_width
+    right_exponent = (right & exponent_mask) >> fraction_width
+    left_fraction = left & fraction_mask
+    right_fraction = right & fraction_mask
+    left_nan = left_exponent == exponent_max and left_fraction != 0
+    right_nan = right_exponent == exponent_max and right_fraction != 0
+    if left_nan:
+        return left | quiet_bit
+    if right_nan:
+        return right | quiet_bit
+
+    left_zero = left_exponent == 0 and left_fraction == 0
+    right_zero = right_exponent == 0 and right_fraction == 0
+    left_infinite = left_exponent == exponent_max
+    right_infinite = right_exponent == exponent_max
+    if (left_zero and right_zero) or (left_infinite and right_infinite):
+        return indefinite
+    if left_infinite or right_zero:
+        return sign | exponent_mask
+    if left_zero or right_infinite:
+        return sign
+
+    precision = fraction_width + 1
+    left_significand = left_fraction
+    right_significand = right_fraction
+    left_power = 1 - bias - fraction_width
+    right_power = 1 - bias - fraction_width
+    if left_exponent:
+        left_significand |= 1 << fraction_width
+        left_power = left_exponent - bias - fraction_width
+    if right_exponent:
+        right_significand |= 1 << fraction_width
+        right_power = right_exponent - bias - fraction_width
+
+    numerator = left_significand
+    denominator = right_significand
+    power = left_power - right_power
+    if power >= 0:
+        numerator <<= power
+    else:
+        denominator <<= -power
+
+    binary_exponent = numerator.bit_length() - denominator.bit_length()
+    if binary_exponent >= 0:
+        if numerator < denominator << binary_exponent:
+            binary_exponent -= 1
+    elif numerator << -binary_exponent < denominator:
+        binary_exponent -= 1
+
+    minimum_normal = 1 - bias
+    if binary_exponent >= minimum_normal:
+        significand = _round_ratio_even(
+            numerator, denominator, precision - 1 - binary_exponent
+        )
+        if significand == 1 << precision:
+            significand >>= 1
+            binary_exponent += 1
+        if binary_exponent > bias:
+            return sign | exponent_mask
+        exponent = binary_exponent + bias
+        return sign | (exponent << fraction_width) | (significand & fraction_mask)
+
+    subnormal = _round_ratio_even(
+        numerator, denominator, precision - 1 - minimum_normal
+    )
+    if subnormal == 0:
+        return sign
+    if subnormal >= 1 << fraction_width:
+        return sign | (1 << fraction_width)
+    return sign | subnormal
+
+
 BinaryExample = (
     tuple[Sequence[int], Sequence[int]]
     | tuple[Sequence[int], Sequence[int], str]
@@ -365,10 +463,10 @@ def bitwise_case(case_id: str, shape: str, operation: str) -> FactoryResult:
 def float_binary_case(
     case_id: str, shape: str, operation: str, *, scalar_only: bool = False
 ) -> FactoryResult:
-    """Build ``+``, ``-`` or ``*`` for a packed or low-lane float vector."""
+    """Build ``+``, ``-``, ``*`` or ``/`` for a packed or low-lane float vector."""
 
     element, _width, lanes, _mask = _shape(shape)
-    if not element.startswith("f") or operation not in {"+", "-", "*"}:
+    if not element.startswith("f") or operation not in {"+", "-", "*", "/"}:
         raise ValueError(f"invalid float binary case: {shape!r} {operation!r}")
 
     examples = None
@@ -392,7 +490,7 @@ def float_binary_case(
             seed_text=seed_text,
             element=element,
             lanes=lanes,
-            standard=10,
+            standard=14 if operation == "/" else 10,
             finite=True,
             examples=examples,
         )
@@ -408,6 +506,18 @@ def float_binary_case(
         left = _lanes(record, "a")
         right = _lanes(record, "b")
         count = 1 if scalar_only else lanes
+        if operation == "/":
+            output = [
+                _divide_float_bits(
+                    element,
+                    int(str(left[index]), 16),
+                    int(str(right[index]), 16),
+                )
+                for index in range(count)
+            ]
+            if scalar_only:
+                output.extend(int(str(value), 16) for value in left[1:])
+            return {"return": vector(element, tuple(output))}
         output = [
             _float_to_bits(
                 element,
@@ -422,11 +532,13 @@ def float_binary_case(
             output.extend(int(str(value), 16) for value in left[1:])
         return {"return": vector(element, tuple(output))}
 
-    return case_id, {"standard": 10}, candidates, execute
+    return case_id, {"standard": 14 if operation == "/" else 10}, candidates, execute
 
 
-def float_compare_case(case_id: str, shape: str, predicate: str) -> FactoryResult:
-    """Build an SSE ordered/unordered packed floating-point comparison."""
+def float_compare_case(
+    case_id: str, shape: str, predicate: str, *, scalar_only: bool = False
+) -> FactoryResult:
+    """Build an SSE ordered/unordered packed or low-lane float comparison."""
 
     element, _width, lanes, mask = _shape(shape)
     predicates = {"==", "!=", "<", "<=", ">", ">=", "!<", "!<=", "!>", "!>=", "ord", "unord"}
@@ -456,11 +568,18 @@ def float_compare_case(case_id: str, shape: str, predicate: str) -> FactoryResul
         return not unordered and ordered[predicate]
 
     def execute(record: Candidate) -> Candidate:
-        output = tuple(
-            mask if matches(int(str(a), 16), int(str(b), 16)) else 0
-            for a, b in zip(_lanes(record, "a"), _lanes(record, "b"), strict=True)
-        )
-        return {"return": vector(element, output)}
+        left = _lanes(record, "a")
+        right = _lanes(record, "b")
+        count = 1 if scalar_only else lanes
+        output = [
+            mask if matches(
+                int(str(left[index]), 16), int(str(right[index]), 16)
+            ) else 0
+            for index in range(count)
+        ]
+        if scalar_only:
+            output.extend(int(str(value), 16) for value in left[1:])
+        return {"return": vector(element, tuple(output))}
 
     return case_id, {"standard": 8}, candidates, execute
 
@@ -708,16 +827,21 @@ def _i32_to_f32(bits: int) -> int:
     return sign | ((leading + 127) << 23) | (rounded & 0x007FFFFF)
 
 
-def _float_to_i32(element: str, bits: int, *, truncate: bool) -> int:
+def _float_to_integer(
+    element: str, bits: int, *, width: int, truncate: bool
+) -> int:
     value = _float_from_bits(element, bits)
+    indefinite = 1 << (width - 1)
     if not math.isfinite(value):
-        return 0x80000000
-    if truncate and (value < -(1 << 31) or value >= (1 << 31)):
-        return 0x80000000
+        return indefinite
     rounded = math.trunc(value) if truncate else round(value)
-    if rounded < -(1 << 31) or rounded > (1 << 31) - 1:
-        return 0x80000000
-    return rounded & 0xFFFFFFFF
+    if rounded < -(1 << (width - 1)) or rounded > (1 << (width - 1)) - 1:
+        return indefinite
+    return rounded & ((1 << width) - 1)
+
+
+def _float_to_i32(element: str, bits: int, *, truncate: bool) -> int:
+    return _float_to_integer(element, bits, width=32, truncate=truncate)
 
 
 def _conversion_examples(source_shape: str, target_shape: str, truncate: bool) -> tuple[tuple[int, ...], ...]:
@@ -790,6 +914,160 @@ def conversion_case(
         return {"return": vector(target, tuple(output))}
 
     return case_id, {"standard": len(examples)}, candidates, execute
+
+
+def scalar_conversion_case(
+    case_id: str, source_shape: str, target_shape: str
+) -> FactoryResult:
+    """Convert one scalar into lane zero and preserve the target's other lanes."""
+
+    target, _target_width, target_lanes, target_mask = _shape(target_shape)
+    if "x" in source_shape:
+        source, _source_width, source_lanes, source_mask = _shape(source_shape)
+        source_examples = _conversion_examples(source_shape, target_shape, False)
+    else:
+        source = source_shape
+        source_lanes = 1
+        source_mask = (1 << int(source[1:])) - 1
+        source_examples = tuple((value,) for value in _boundary_values(source))
+    supported = {
+        ("f64", "f32"),
+        ("f32", "f64"),
+        ("i32", "f32"),
+        ("i32", "f64"),
+        ("i64", "f64"),
+    }
+    if (source, target) not in supported:
+        raise ValueError(f"unsupported scalar conversion: {source_shape!r} -> {target_shape!r}")
+    target_boundaries = _boundary_values(target)
+    standard = len(source_examples)
+
+    def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
+        random = SplitMix64(int(seed_text, 16))
+        modes = rounding_modes(case)
+        for index, source_values in enumerate(source_examples):
+            item = _base(case, index, random=False, seed=seed_text)
+            preserved = tuple(
+                target_boundaries[(index + lane) % len(target_boundaries)]
+                for lane in range(target_lanes)
+            )
+            operands: dict[str, JSONValue] = {"a": vector(target, preserved)}
+            if source_lanes == 1:
+                operands["value"] = scalar(source, source_values[0])
+            else:
+                operands["b"] = vector(source, source_values)
+            item["operands"] = operands
+            yield item
+        index = standard
+        while True:
+            item = _base(case, index, random=True, seed=seed_text)
+            environment = item["environment"]
+            assert isinstance(environment, dict)
+            environment["rounding"] = modes[random.next() % len(modes)]
+            operands = {
+                "a": vector(
+                    target,
+                    tuple(random.next() & target_mask for _ in range(target_lanes)),
+                )
+            }
+            if source_lanes == 1:
+                operands["value"] = scalar(source, random.next() & source_mask)
+            else:
+                operands["b"] = vector(
+                    source,
+                    tuple(random.next() & source_mask for _ in range(source_lanes)),
+                )
+            item["operands"] = operands
+            yield item
+            index += 1
+
+    def execute(record: Candidate) -> Candidate:
+        output = [int(str(value), 16) for value in _lanes(record, "a")]
+        source_bits = (
+            _bits(record, "value")
+            if source_lanes == 1
+            else int(str(_lanes(record, "b")[0]), 16)
+        )
+        if (source, target) == ("f64", "f32"):
+            converted = _f64_to_f32(source_bits)
+        elif (source, target) == ("f32", "f64"):
+            converted = _f32_to_f64(source_bits)
+        elif (source, target) == ("i32", "f32"):
+            converted = _i32_to_f32(source_bits)
+        else:
+            converted = _float_to_bits(target, float(_signed(source_bits, int(source[1:]))))
+        output[0] = converted
+        return {"return": vector(target, tuple(output))}
+
+    return case_id, {"standard": standard}, candidates, execute
+
+
+def float_to_scalar_case(
+    case_id: str,
+    source_shape: str,
+    target: str,
+    *,
+    truncate: bool = False,
+) -> FactoryResult:
+    """Convert the low float lane to a signed scalar integer."""
+
+    source, _source_width, source_lanes, source_mask = _shape(source_shape)
+    if source not in {"f32", "f64"} or target not in {"i32", "i64"}:
+        raise ValueError(f"unsupported float scalar conversion: {source_shape!r} -> {target!r}")
+    if source == "f32" and target == "i64":
+        raise ValueError("the official scalar conversion family does not expose f32 to i64")
+    target_width = int(target[1:])
+    numeric = (
+        0.0, -0.0, 0.5, -0.5, 1.5, 2.5, -1.5, -2.5,
+        float((1 << (target_width - 1)) - (1024 if target_width == 64 else 128)),
+        float(-(1 << (target_width - 1))),
+        float(1 << (target_width - 1)),
+    )
+    special = (
+        0x7F800000, 0xFF800000, 0x7FC00042, 0x7F800001
+    ) if source == "f32" else (
+        0x7FF0000000000000,
+        0xFFF0000000000000,
+        0x7FF8000000000042,
+        0x7FF0000000000001,
+    )
+    low_values = tuple(_float_to_bits(source, value) for value in numeric) + special
+    boundaries = _boundary_values(source)
+
+    def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
+        random = SplitMix64(int(seed_text, 16))
+        modes = rounding_modes(case)
+        for index, low in enumerate(low_values):
+            lanes = (low,) + tuple(
+                boundaries[(index + lane) % len(boundaries)]
+                for lane in range(1, source_lanes)
+            )
+            item = _base(case, index, random=False, seed=seed_text)
+            item["operands"] = {"a": vector(source, lanes)}
+            yield item
+        index = len(low_values)
+        while True:
+            item = _base(case, index, random=True, seed=seed_text)
+            environment = item["environment"]
+            assert isinstance(environment, dict)
+            environment["rounding"] = modes[random.next() % len(modes)]
+            item["operands"] = {
+                "a": vector(
+                    source,
+                    tuple(random.next() & source_mask for _ in range(source_lanes)),
+                )
+            }
+            yield item
+            index += 1
+
+    def execute(record: Candidate) -> Candidate:
+        low = int(str(_lanes(record, "a")[0]), 16)
+        converted = _float_to_integer(
+            source, low, width=target_width, truncate=truncate
+        )
+        return {"return": scalar(target, converted)}
+
+    return case_id, {"standard": len(low_values)}, candidates, execute
 
 
 def shuffle_case(case_id: str, shape: str, kind: str) -> FactoryResult:
@@ -986,6 +1264,254 @@ def loadu_f64_case(case_id: str) -> FactoryResult:
         }
 
     return case_id, {"standard": len(structured)}, candidates, execute
+
+
+def memory_load_case(case_id: str, shape: str, mode: str) -> FactoryResult:
+    """Build scalar, broadcast, preserving, zeroing, and reverse memory loads."""
+
+    element, width, lanes, mask = _shape(shape)
+    supported = {
+        ("f32x4", "scalar"),
+        ("f32x4", "broadcast"),
+        ("f32x4", "all"),
+        ("f32x4", "reverse"),
+        ("f64x2", "scalar"),
+        ("f64x2", "broadcast"),
+        ("f64x2", "low"),
+        ("f64x2", "high"),
+        ("f64x2", "reverse"),
+        ("i32x4", "all"),
+        ("i64x2", "scalar"),
+    }
+    if (shape, mode) not in supported:
+        raise ValueError(f"unsupported memory load: {shape!r} {mode!r}")
+    byte_width = width // 8
+    loaded_lanes = lanes if mode in {"all", "reverse"} else 1
+    alignment = 16 if mode == "reverse" else 1
+    boundaries = _boundary_values(element)
+    standard = 8
+
+    def make_record(
+        case: CaseDefinition,
+        index: int,
+        *,
+        raw: bytes,
+        offset: int,
+        preserved: tuple[int, ...],
+        random_record: bool,
+        seed_text: str,
+    ) -> Candidate:
+        item = _base(
+            case, index, random=random_record, seed=seed_text
+        )
+        item["buffers"] = {
+            "buf0": {"alignment": alignment, "bytes": f"0x{raw.hex()}"}
+        }
+        operands: dict[str, JSONValue] = {
+            "source": {"buffer": "buf0", "offset": offset}
+        }
+        if mode in {"low", "high"}:
+            operands["a"] = vector(element, preserved)
+        item["operands"] = operands
+        return item
+
+    def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
+        random = SplitMix64(int(seed_text, 16))
+        for index in range(standard):
+            offset = 0 if alignment > 1 else (0, 1, 3, 7)[index % 4]
+            values = tuple(
+                boundaries[(index + lane) % len(boundaries)]
+                for lane in range(loaded_lanes)
+            )
+            payload = b"".join(
+                value.to_bytes(byte_width, "little") for value in values
+            )
+            raw = bytes((0xA0 + n) & 0xFF for n in range(offset)) + payload
+            raw += bytes((0xD0 + n) & 0xFF for n in range(5))
+            preserved = tuple(
+                boundaries[(index + lane + 3) % len(boundaries)]
+                for lane in range(lanes)
+            )
+            yield make_record(
+                case,
+                index,
+                raw=raw,
+                offset=offset,
+                preserved=preserved,
+                random_record=False,
+                seed_text=seed_text,
+            )
+        index = standard
+        while True:
+            offset = 0 if alignment > 1 else random.next() % 17
+            raw = b"".join(random.next().to_bytes(8, "little") for _ in range(4))
+            preserved = tuple(random.next() & mask for _ in range(lanes))
+            yield make_record(
+                case,
+                index,
+                raw=raw,
+                offset=offset,
+                preserved=preserved,
+                random_record=True,
+                seed_text=seed_text,
+            )
+            index += 1
+
+    def execute(candidate: Candidate) -> Candidate:
+        buffers = candidate["buffers"]
+        operands = candidate["operands"]
+        assert isinstance(buffers, dict) and isinstance(operands, dict)
+        pointer = operands["source"]
+        assert isinstance(pointer, dict)
+        allocation = buffers[str(pointer["buffer"])]
+        assert isinstance(allocation, dict)
+        raw = bytes.fromhex(str(allocation["bytes"])[2:])
+        offset = int(pointer["offset"])
+        loaded = tuple(
+            int.from_bytes(
+                raw[offset + lane * byte_width:offset + (lane + 1) * byte_width],
+                "little",
+            )
+            for lane in range(loaded_lanes)
+        )
+        if mode == "reverse":
+            output = tuple(reversed(loaded))
+        elif mode == "all":
+            output = loaded
+        elif mode == "broadcast":
+            output = (loaded[0],) * lanes
+        elif mode in {"low", "high"}:
+            preserved = tuple(int(str(value), 16) for value in _lanes(candidate, "a"))
+            output = (loaded[0], preserved[1]) if mode == "low" else (preserved[0], loaded[0])
+        else:
+            output = (loaded[0],) + (0,) * (lanes - 1)
+        observed = {
+            name: {"byte_offset": 0, "bytes": str(value["bytes"])}
+            for name, value in buffers.items()
+            if isinstance(value, dict)
+        }
+        return {"buffers": observed, "return": vector(element, output)}
+
+    return case_id, {"standard": standard}, candidates, execute
+
+
+def memory_store_case(case_id: str, shape: str, mode: str) -> FactoryResult:
+    """Build low-lane, high-lane, and reverse-order memory stores."""
+
+    element, width, lanes, mask = _shape(shape)
+    supported = {
+        ("f32x4", "low"),
+        ("f32x4", "all"),
+        ("f32x4", "reverse"),
+        ("f64x2", "low"),
+        ("f64x2", "high"),
+        ("f64x2", "all"),
+        ("f64x2", "reverse"),
+        ("i32x4", "all"),
+        ("i64x2", "low"),
+    }
+    if (shape, mode) not in supported:
+        raise ValueError(f"unsupported memory store: {shape!r} {mode!r}")
+    byte_width = width // 8
+    stored_lanes = lanes if mode in {"all", "reverse"} else 1
+    alignment = 16 if mode == "reverse" else 1
+    boundaries = _boundary_values(element)
+    standard = 8
+
+    def make_record(
+        case: CaseDefinition,
+        index: int,
+        *,
+        raw: bytes,
+        offset: int,
+        values: tuple[int, ...],
+        random_record: bool,
+        seed_text: str,
+    ) -> Candidate:
+        item = _base(case, index, random=random_record, seed=seed_text)
+        item["buffers"] = {
+            "buf0": {"alignment": alignment, "bytes": f"0x{raw.hex()}"}
+        }
+        item["operands"] = {
+            "destination": {"buffer": "buf0", "offset": offset},
+            "a": vector(element, values),
+        }
+        return item
+
+    def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
+        random = SplitMix64(int(seed_text, 16))
+        write_size = stored_lanes * byte_width
+        for index in range(standard):
+            offset = 0 if alignment > 1 else (0, 1, 3, 7)[index % 4]
+            raw = bytes(
+                (0x40 + index * 17 + byte) & 0xFF
+                for byte in range(offset + write_size + 5)
+            )
+            values = tuple(
+                boundaries[(index + lane) % len(boundaries)]
+                for lane in range(lanes)
+            )
+            yield make_record(
+                case,
+                index,
+                raw=raw,
+                offset=offset,
+                values=values,
+                random_record=False,
+                seed_text=seed_text,
+            )
+        index = standard
+        while True:
+            offset = 0 if alignment > 1 else random.next() % (33 - write_size)
+            raw = b"".join(random.next().to_bytes(8, "little") for _ in range(4))
+            values = tuple(random.next() & mask for _ in range(lanes))
+            yield make_record(
+                case,
+                index,
+                raw=raw,
+                offset=offset,
+                values=values,
+                random_record=True,
+                seed_text=seed_text,
+            )
+            index += 1
+
+    def execute(candidate: Candidate) -> Candidate:
+        buffers = candidate["buffers"]
+        operands = candidate["operands"]
+        assert isinstance(buffers, dict) and isinstance(operands, dict)
+        pointer = operands["destination"]
+        assert isinstance(pointer, dict)
+        buffer_id = str(pointer["buffer"])
+        allocation = buffers[buffer_id]
+        assert isinstance(allocation, dict)
+        raw = bytearray.fromhex(str(allocation["bytes"])[2:])
+        offset = int(pointer["offset"])
+        values = tuple(int(str(value), 16) for value in _lanes(candidate, "a"))
+        selected = (
+            tuple(reversed(values))
+            if mode == "reverse"
+            else values
+            if mode == "all"
+            else (values[1],)
+            if mode == "high"
+            else (values[0],)
+        )
+        payload = b"".join(
+            value.to_bytes(byte_width, "little") for value in selected
+        )
+        raw[offset:offset + len(payload)] = payload
+        observed = {
+            name: {
+                "byte_offset": 0,
+                "bytes": f"0x{bytes(raw).hex()}" if name == buffer_id else str(value["bytes"]),
+            }
+            for name, value in buffers.items()
+            if isinstance(value, dict)
+        }
+        return {"buffers": observed}
+
+    return case_id, {"standard": standard}, candidates, execute
 
 
 def variable_shift_case(
@@ -1260,32 +1786,48 @@ def minmax_f64_case(case_id: str, kind: str) -> FactoryResult:
     return minmax_float_case(case_id, "f64x2", kind)
 
 
-def comi_f64_case(case_id: str, predicate: str) -> FactoryResult:
-    structured = (
-        (0x0000000000000000, 0x8000000000000000),
-        (0x3FF0000000000000, 0x4000000000000000),
-        (0x4000000000000000, 0x3FF0000000000000),
-        (0x7FF8000000000042, 0x3FF0000000000000),
-    )
+def _comi_float_case(
+    case_id: str,
+    shape: str,
+    predicate: str,
+    structured: tuple[tuple[int, int], ...],
+) -> FactoryResult:
+    element, _width, lanes, mask = _shape(shape)
 
     def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
         random = SplitMix64(int(seed_text, 16))
         for index, (a, b) in enumerate(structured):
             item = _base(case, index, random=False, seed=seed_text)
-            item["operands"] = {"a": vector("f64", (a, random.next())), "b": vector("f64", (b, random.next()))}
+            item["operands"] = {
+                "a": vector(
+                    element,
+                    (a,) + tuple(random.next() & mask for _ in range(1, lanes)),
+                ),
+                "b": vector(
+                    element,
+                    (b,) + tuple(random.next() & mask for _ in range(1, lanes)),
+                ),
+            }
             yield item
         index = len(structured)
         while True:
             item = _base(case, index, random=True, seed=seed_text)
-            item["operands"] = {"a": vector("f64", (random.next(), random.next())), "b": vector("f64", (random.next(), random.next()))}
+            item["operands"] = {
+                "a": vector(
+                    element, tuple(random.next() & mask for _ in range(lanes))
+                ),
+                "b": vector(
+                    element, tuple(random.next() & mask for _ in range(lanes))
+                ),
+            }
             yield item
             index += 1
 
     def execute(record: Candidate) -> Candidate:
         a_bits = int(str(_lanes(record, "a")[0]), 16)
         b_bits = int(str(_lanes(record, "b")[0]), 16)
-        a = struct.unpack(">d", a_bits.to_bytes(8, "big"))[0]
-        b = struct.unpack(">d", b_bits.to_bytes(8, "big"))[0]
+        a = _float_from_bits(element, a_bits)
+        b = _float_from_bits(element, b_bits)
         unordered = math.isnan(a) or math.isnan(b)
         result = {
             "eq": not unordered and a == b,
@@ -1298,3 +1840,27 @@ def comi_f64_case(case_id: str, predicate: str) -> FactoryResult:
         return {"return": scalar("i32", int(result))}
 
     return case_id, {"standard": len(structured)}, candidates, execute
+
+
+def comi_f32_case(case_id: str, predicate: str) -> FactoryResult:
+    structured = (
+        (0x00000000, 0x80000000),
+        (0x3F800000, 0x40000000),
+        (0x40000000, 0x3F800000),
+        (0x7FC00042, 0x3F800000),
+        (0x3F800000, 0x7F800001),
+        (0x7F800000, 0x7F800000),
+        (0xFF800000, 0x7F800000),
+        (0xBF800000, 0xBF800000),
+    )
+    return _comi_float_case(case_id, "f32x4", predicate, structured)
+
+
+def comi_f64_case(case_id: str, predicate: str) -> FactoryResult:
+    structured = (
+        (0x0000000000000000, 0x8000000000000000),
+        (0x3FF0000000000000, 0x4000000000000000),
+        (0x4000000000000000, 0x3FF0000000000000),
+        (0x7FF8000000000042, 0x3FF0000000000000),
+    )
+    return _comi_float_case(case_id, "f64x2", predicate, structured)
