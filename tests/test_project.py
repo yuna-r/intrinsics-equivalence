@@ -76,7 +76,7 @@ isa_registry = "isa.json"
         case_names = {
             path.stem for path in (suite / "cases").glob("*.py")
         }
-        self.assertEqual(len(case_names), 146)
+        self.assertEqual(len(case_names), 176)
 
         for role, prefix in (("intel", "intel"), ("openpower", "power")):
             sources = "\n".join(
@@ -108,7 +108,7 @@ isa_registry = "isa.json"
     def test_official_cases_are_flat_one_file_packs(self) -> None:
         cases = PROJECT / "10_official_suite" / "cases"
         packs = sorted(cases.glob("*.py"))
-        self.assertEqual(len(packs), 146)
+        self.assertEqual(len(packs), 176)
         self.assertFalse(any(path.is_dir() for path in cases.iterdir()))
         for path in packs:
             source = path.read_text(encoding="utf-8")

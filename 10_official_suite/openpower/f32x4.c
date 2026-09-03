@@ -34,6 +34,7 @@ int power_movemask_f32x4(f32x4 a)
 }
 
 IOITF_BINARY(f32x4, f32x4, power_unpacklo_f32x4, (f32x4){a[0], b[0], a[1], b[1]})
+IOITF_BINARY(f32x4, f32x4, power_unpackhi_f32x4, (f32x4){a[2], b[2], a[3], b[3]})
 
 static unsigned long long widen_f32_bits(unsigned bits)
 {
@@ -81,6 +82,8 @@ f32x4 power_shuffle_f32x4(f32x4 a, f32x4 b, unsigned imm)
 }
 
 IOITF_BINARY(f32x4, f32x4, power_movehl_f32x4, (f32x4){b[2], b[3], a[2], a[3]})
+IOITF_BINARY(f32x4, f32x4, power_movelh_f32x4, (f32x4){a[0], a[1], b[0], b[1]})
+IOITF_BINARY(f32x4, f32x4, power_move_f32x4, (f32x4){b[0], a[1], a[2], a[3]})
 
 static unsigned long long round_shift_even(unsigned long long value,
                                            unsigned shift)
@@ -236,6 +239,22 @@ i32x4 power_cvtt_f32x4_i32x4(f32x4 a)
 }
 
 IOITF_BINARY(f32x4, f32x4, power_add_f32x4, vec_add(a, b))
+IOITF_BINARY(f32x4, f32x4, power_sub_f32x4, vec_sub(a, b))
+IOITF_BINARY(f32x4, f32x4, power_mul_f32x4, vec_mul(a, b))
+IOITF_BINARY(f32x4, f32x4, power_add_scalar_f32x4,
+             (f32x4){a[0] + b[0], a[1], a[2], a[3]})
+IOITF_BINARY(f32x4, f32x4, power_sub_scalar_f32x4,
+             (f32x4){a[0] - b[0], a[1], a[2], a[3]})
+IOITF_BINARY(f32x4, f32x4, power_mul_scalar_f32x4,
+             (f32x4){a[0] * b[0], a[1], a[2], a[3]})
+IOITF_BINARY(f32x4, f32x4, power_and_f32x4,
+             (f32x4)((u32x4)a & (u32x4)b))
+IOITF_BINARY(f32x4, f32x4, power_or_f32x4,
+             (f32x4)((u32x4)a | (u32x4)b))
+IOITF_BINARY(f32x4, f32x4, power_xor_f32x4,
+             (f32x4)((u32x4)a ^ (u32x4)b))
+IOITF_BINARY(f32x4, f32x4, power_andnot_f32x4,
+             (f32x4)((~(u32x4)a) & (u32x4)b))
 
 static unsigned sqrt_f32_bits(unsigned input, unsigned result)
 {
@@ -261,19 +280,31 @@ f32x4 power_sqrt_f32x4(f32x4 a)
         sqrt_f32_bits(input[3], result[3])};
 }
 
+f32x4 power_sqrt_scalar_f32x4(f32x4 a)
+{
+    u32x4 input = (u32x4)a;
+    u32x4 result = (u32x4)vec_sqrt(a);
+    return (f32x4)(u32x4){
+        sqrt_f32_bits(input[0], result[0]),
+        input[1], input[2], input[3]};
+}
+
 static int nan_f32_bits(unsigned bits)
 {
     return (bits & 0x7f800000U) == 0x7f800000U &&
            (bits & 0x007fffffU) != 0U;
 }
 
-static unsigned min_f32_bits(float a, float b, unsigned a_bits,
-                             unsigned b_bits)
+static unsigned minmax_f32_bits(float a, float b, unsigned a_bits,
+                                unsigned b_bits, int select_min)
 {
     if (nan_f32_bits(a_bits) || nan_f32_bits(b_bits) || a == b) {
         return b_bits;
     }
-    return a < b ? a_bits : b_bits;
+    if ((select_min && a < b) || (!select_min && a > b)) {
+        return a_bits;
+    }
+    return b_bits;
 }
 
 f32x4 power_min_f32x4(f32x4 a, f32x4 b)
@@ -281,16 +312,101 @@ f32x4 power_min_f32x4(f32x4 a, f32x4 b)
     u32x4 a_bits = (u32x4)a;
     u32x4 b_bits = (u32x4)b;
     return (f32x4)(u32x4){
-        min_f32_bits(a[0], b[0], a_bits[0], b_bits[0]),
-        min_f32_bits(a[1], b[1], a_bits[1], b_bits[1]),
-        min_f32_bits(a[2], b[2], a_bits[2], b_bits[2]),
-        min_f32_bits(a[3], b[3], a_bits[3], b_bits[3])};
+        minmax_f32_bits(a[0], b[0], a_bits[0], b_bits[0], 1),
+        minmax_f32_bits(a[1], b[1], a_bits[1], b_bits[1], 1),
+        minmax_f32_bits(a[2], b[2], a_bits[2], b_bits[2], 1),
+        minmax_f32_bits(a[3], b[3], a_bits[3], b_bits[3], 1)};
+}
+
+f32x4 power_max_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    return (f32x4)(u32x4){
+        minmax_f32_bits(a[0], b[0], a_bits[0], b_bits[0], 0),
+        minmax_f32_bits(a[1], b[1], a_bits[1], b_bits[1], 0),
+        minmax_f32_bits(a[2], b[2], a_bits[2], b_bits[2], 0),
+        minmax_f32_bits(a[3], b[3], a_bits[3], b_bits[3], 0)};
+}
+
+f32x4 power_min_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    return (f32x4)(u32x4){
+        minmax_f32_bits(a[0], b[0], a_bits[0], b_bits[0], 1),
+        a_bits[1], a_bits[2], a_bits[3]};
+}
+
+f32x4 power_max_scalar_f32x4(f32x4 a, f32x4 b)
+{
+    u32x4 a_bits = (u32x4)a;
+    u32x4 b_bits = (u32x4)b;
+    return (f32x4)(u32x4){
+        minmax_f32_bits(a[0], b[0], a_bits[0], b_bits[0], 0),
+        a_bits[1], a_bits[2], a_bits[3]};
 }
 
 static unsigned mask_f32(int yes)
 {
     return yes ? ~0U : 0U;
 }
+
+IOITF_BINARY(f32x4, f32x4, power_cmpeq_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] == b[0]),
+                             mask_f32(a[1] == b[1]),
+                             mask_f32(a[2] == b[2]),
+                             mask_f32(a[3] == b[3])})
+IOITF_BINARY(f32x4, f32x4, power_cmpneq_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] != b[0]),
+                             mask_f32(a[1] != b[1]),
+                             mask_f32(a[2] != b[2]),
+                             mask_f32(a[3] != b[3])})
+IOITF_BINARY(f32x4, f32x4, power_cmplt_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] < b[0]),
+                             mask_f32(a[1] < b[1]),
+                             mask_f32(a[2] < b[2]),
+                             mask_f32(a[3] < b[3])})
+IOITF_BINARY(f32x4, f32x4, power_cmple_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] <= b[0]),
+                             mask_f32(a[1] <= b[1]),
+                             mask_f32(a[2] <= b[2]),
+                             mask_f32(a[3] <= b[3])})
+IOITF_BINARY(f32x4, f32x4, power_cmpgt_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] > b[0]),
+                             mask_f32(a[1] > b[1]),
+                             mask_f32(a[2] > b[2]),
+                             mask_f32(a[3] > b[3])})
+IOITF_BINARY(f32x4, f32x4, power_cmpge_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] >= b[0]),
+                             mask_f32(a[1] >= b[1]),
+                             mask_f32(a[2] >= b[2]),
+                             mask_f32(a[3] >= b[3])})
+IOITF_BINARY(f32x4, f32x4, power_cmpnlt_f32x4,
+             (f32x4)(u32x4){mask_f32(!(a[0] < b[0])),
+                             mask_f32(!(a[1] < b[1])),
+                             mask_f32(!(a[2] < b[2])),
+                             mask_f32(!(a[3] < b[3]))})
+IOITF_BINARY(f32x4, f32x4, power_cmpnle_f32x4,
+             (f32x4)(u32x4){mask_f32(!(a[0] <= b[0])),
+                             mask_f32(!(a[1] <= b[1])),
+                             mask_f32(!(a[2] <= b[2])),
+                             mask_f32(!(a[3] <= b[3]))})
+IOITF_BINARY(f32x4, f32x4, power_cmpngt_f32x4,
+             (f32x4)(u32x4){mask_f32(!(a[0] > b[0])),
+                             mask_f32(!(a[1] > b[1])),
+                             mask_f32(!(a[2] > b[2])),
+                             mask_f32(!(a[3] > b[3]))})
+IOITF_BINARY(f32x4, f32x4, power_cmpnge_f32x4,
+             (f32x4)(u32x4){mask_f32(!(a[0] >= b[0])),
+                             mask_f32(!(a[1] >= b[1])),
+                             mask_f32(!(a[2] >= b[2])),
+                             mask_f32(!(a[3] >= b[3]))})
+IOITF_BINARY(f32x4, f32x4, power_cmpord_f32x4,
+             (f32x4)(u32x4){mask_f32(a[0] == a[0] && b[0] == b[0]),
+                             mask_f32(a[1] == a[1] && b[1] == b[1]),
+                             mask_f32(a[2] == a[2] && b[2] == b[2]),
+                             mask_f32(a[3] == a[3] && b[3] == b[3])})
 
 f32x4 power_cmpunord_f32x4(f32x4 a, f32x4 b)
 {

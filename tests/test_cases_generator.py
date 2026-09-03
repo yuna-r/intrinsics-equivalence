@@ -40,6 +40,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
             self.cases.ids,
             (
                 "sse2.add.f32x4.default",
+                "sse2.add.f32x4.scalar",
                 "sse2.add.f64x2.default",
                 "sse2.add.f64x2.scalar",
                 "sse2.add.i16x8.default",
@@ -50,8 +51,10 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.adds.i8x16.default",
                 "sse2.adds.u16x8.default",
                 "sse2.adds.u8x16.default",
+                "sse2.and.f32x4.default",
                 "sse2.and.f64x2.default",
                 "sse2.and.i32x4.default",
+                "sse2.andnot.f32x4.default",
                 "sse2.andnot.f64x2.default",
                 "sse2.andnot.i32x4.default",
                 "sse2.avg.u16x8.default",
@@ -62,25 +65,36 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.cast.f64x2.i64x2",
                 "sse2.cast.i32x4.f32x4",
                 "sse2.cast.i64x2.f64x2",
+                "sse2.cmpeq.f32x4.default",
                 "sse2.cmpeq.f64x2.default",
                 "sse2.cmpeq.i16x8.default",
                 "sse2.cmpeq.i32x4.default",
                 "sse2.cmpeq.i8x16.default",
+                "sse2.cmpge.f32x4.default",
                 "sse2.cmpge.f64x2.default",
+                "sse2.cmpgt.f32x4.default",
                 "sse2.cmpgt.f64x2.default",
                 "sse2.cmpgt.i16x8.default",
                 "sse2.cmpgt.i32x4.default",
                 "sse2.cmpgt.i8x16.default",
+                "sse2.cmple.f32x4.default",
                 "sse2.cmple.f64x2.default",
+                "sse2.cmplt.f32x4.default",
                 "sse2.cmplt.f64x2.default",
                 "sse2.cmplt.i16x8.default",
                 "sse2.cmplt.i32x4.default",
                 "sse2.cmplt.i8x16.default",
+                "sse2.cmpneq.f32x4.default",
                 "sse2.cmpneq.f64x2.default",
+                "sse2.cmpnge.f32x4.default",
                 "sse2.cmpnge.f64x2.default",
+                "sse2.cmpngt.f32x4.default",
                 "sse2.cmpngt.f64x2.default",
+                "sse2.cmpnle.f32x4.default",
                 "sse2.cmpnle.f64x2.default",
+                "sse2.cmpnlt.f32x4.default",
                 "sse2.cmpnlt.f64x2.default",
+                "sse2.cmpord.f32x4.default",
                 "sse2.cmpord.f64x2.default",
                 "sse2.cmpunord.f32x4.default",
                 "sse2.cmpunord.f64x2.default",
@@ -106,24 +120,33 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.insert.i16x8.imm8",
                 "sse2.loadu.f64x2.default",
                 "sse2.madd.i16x8.default",
+                "sse2.max.f32x4.default",
+                "sse2.max.f32x4.scalar",
                 "sse2.max.f64x2.default",
                 "sse2.max.i16x8.default",
                 "sse2.max.u8x16.default",
                 "sse2.min.f32x4.default",
+                "sse2.min.f32x4.scalar",
                 "sse2.min.f64x2.default",
                 "sse2.min.i16x8.default",
                 "sse2.min.u8x16.default",
+                "sse2.move.f32x4.default",
                 "sse2.move.f64x2.default",
                 "sse2.move.i64x2.default",
                 "sse2.movehl.f32x4.default",
+                "sse2.movelh.f32x4.default",
                 "sse2.movemask.f32x4.default",
                 "sse2.movemask.f64x2.default",
                 "sse2.movemask.i8x16.default",
+                "sse2.mul.f32x4.default",
+                "sse2.mul.f32x4.scalar",
                 "sse2.mul.f64x2.default",
+                "sse2.mul.f64x2.scalar",
                 "sse2.mul.u32x4.default",
                 "sse2.mulhi.i16x8.default",
                 "sse2.mulhi.u16x8.default",
                 "sse2.mullo.i16x8.default",
+                "sse2.or.f32x4.default",
                 "sse2.or.f64x2.default",
                 "sse2.or.i32x4.default",
                 "sse2.packs.i16x8.default",
@@ -152,6 +175,8 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.slli.i32x4.imm8",
                 "sse2.slli.i64x2.imm8",
                 "sse2.sqrt.f32x4.default",
+                "sse2.sqrt.f32x4.scalar",
+                "sse2.sqrt.f64x2.default",
                 "sse2.sra.i16x8.vector-count",
                 "sse2.sra.i32x4.vector-count",
                 "sse2.srai.i16x8.imm8",
@@ -163,7 +188,10 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.srli.i16x8.imm8",
                 "sse2.srli.i32x4.imm8",
                 "sse2.srli.i64x2.imm8",
+                "sse2.sub.f32x4.default",
+                "sse2.sub.f32x4.scalar",
                 "sse2.sub.f64x2.default",
+                "sse2.sub.f64x2.scalar",
                 "sse2.sub.i16x8.default",
                 "sse2.sub.i32x4.default",
                 "sse2.sub.i64x2.default",
@@ -172,6 +200,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.subs.i8x16.default",
                 "sse2.subs.u16x8.default",
                 "sse2.subs.u8x16.default",
+                "sse2.unpackhi.f32x4.default",
                 "sse2.unpackhi.f64x2.default",
                 "sse2.unpackhi.i16x8.default",
                 "sse2.unpackhi.i32x4.default",
@@ -183,6 +212,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 "sse2.unpacklo.i32x4.default",
                 "sse2.unpacklo.i64x2.default",
                 "sse2.unpacklo.i8x16.default",
+                "sse2.xor.f32x4.default",
                 "sse2.xor.f64x2.default",
                 "sse2.xor.i32x4.default",
             ),
@@ -355,7 +385,7 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 profile="smoke",
                 count_per_case=5,
             )
-            self.assertEqual(first.record_count, 730)
+            self.assertEqual(first.record_count, 880)
             self.assertEqual(first.sha256, second.sha256)
             self.assertEqual(first.vectors_path.read_bytes(), second.vectors_path.read_bytes())
             manifest = read_canonical_json(first.manifest_path)
@@ -374,6 +404,47 @@ class CaseAndGeneratorTests(unittest.TestCase):
 
     def test_added_case_models_have_known_results(self) -> None:
         records = {
+            "sse2.and.f32x4.default": {
+                "operands": {
+                    "a": {"element": "f32", "lanes": ["0xffffffff", "0xaaaaaaaa", "0x80000000", "0x7fc00042"]},
+                    "b": {"element": "f32", "lanes": ["0x12345678", "0x0f0f0f0f", "0x7fffffff", "0xffffffff"]},
+                }
+            },
+            "sse2.sub.f32x4.default": {
+                "operands": {
+                    "a": {"element": "f32", "lanes": ["0x41200000", "0xc0800000", "0x00000000", "0x80000000"]},
+                    "b": {"element": "f32", "lanes": ["0x40400000", "0x40000000", "0x80000000", "0x00000000"]},
+                }
+            },
+            "sse2.mul.f32x4.default": {
+                "operands": {
+                    "a": {"element": "f32", "lanes": ["0x40000000", "0xc0400000", "0x00000000", "0x80000000"]},
+                    "b": {"element": "f32", "lanes": ["0x40800000", "0x3f000000", "0xc0a00000", "0xc0a00000"]},
+                }
+            },
+            "sse2.max.f32x4.default": {
+                "operands": {
+                    "a": {"element": "f32", "lanes": ["0x3f800000", "0x7fc00042", "0x00000000", "0x80000000"]},
+                    "b": {"element": "f32", "lanes": ["0x40000000", "0x40400000", "0x80000000", "0x00000000"]},
+                }
+            },
+            "sse2.sqrt.f64x2.default": {
+                "operands": {
+                    "a": {"element": "f64", "lanes": ["0x7ff0000000000042", "0xc010000000000000"]},
+                }
+            },
+            "sse2.sub.f64x2.scalar": {
+                "operands": {
+                    "a": {"element": "f64", "lanes": ["0x4024000000000000", "0x7ff8000000000042"]},
+                    "b": {"element": "f64", "lanes": ["0x4008000000000000", "0xfff0000000000000"]},
+                }
+            },
+            "sse2.mul.f64x2.scalar": {
+                "operands": {
+                    "a": {"element": "f64", "lanes": ["0xc008000000000000", "0x8000000000000000"]},
+                    "b": {"element": "f64", "lanes": ["0x3fe0000000000000", "0x7ff8000000000042"]},
+                }
+            },
             "sse2.sub.f64x2.default": {
                 "operands": {
                     "a": {
@@ -422,6 +493,27 @@ class CaseAndGeneratorTests(unittest.TestCase):
             },
         }
         expected = {
+            "sse2.and.f32x4.default": {
+                "return": {"element": "f32", "lanes": ["0x12345678", "0x0a0a0a0a", "0x00000000", "0x7fc00042"]}
+            },
+            "sse2.sub.f32x4.default": {
+                "return": {"element": "f32", "lanes": ["0x40e00000", "0xc0c00000", "0x00000000", "0x80000000"]}
+            },
+            "sse2.mul.f32x4.default": {
+                "return": {"element": "f32", "lanes": ["0x41000000", "0xbfc00000", "0x80000000", "0x00000000"]}
+            },
+            "sse2.max.f32x4.default": {
+                "return": {"element": "f32", "lanes": ["0x40000000", "0x40400000", "0x80000000", "0x00000000"]}
+            },
+            "sse2.sqrt.f64x2.default": {
+                "return": {"element": "f64", "lanes": ["0x7ff8000000000042", "0xfff8000000000000"]}
+            },
+            "sse2.sub.f64x2.scalar": {
+                "return": {"element": "f64", "lanes": ["0x401c000000000000", "0x7ff8000000000042"]}
+            },
+            "sse2.mul.f64x2.scalar": {
+                "return": {"element": "f64", "lanes": ["0xbff8000000000000", "0x8000000000000000"]}
+            },
             "sse2.sub.f64x2.default": {
                 "return": {
                     "element": "f64",
@@ -452,6 +544,98 @@ class CaseAndGeneratorTests(unittest.TestCase):
                 case = self.cases.get(case_id)
                 actual = load_development_case(case).execute(record)
                 self.assertEqual(actual, expected[case_id])
+
+    def test_f32_comparison_models_cover_nan_zero_infinity_and_masks(self) -> None:
+        record = {
+            "operands": {
+                "a": {
+                    "element": "f32",
+                    "lanes": ["0x00000000", "0x3f800000", "0x7fc00042", "0xff800000"],
+                },
+                "b": {
+                    "element": "f32",
+                    "lanes": ["0x80000000", "0x40000000", "0x40400000", "0x7f800000"],
+                },
+            }
+        }
+        yes = "0xffffffff"
+        no = "0x00000000"
+        expected = {
+            "sse2.cmpeq.f32x4.default": [yes, no, no, no],
+            "sse2.cmpneq.f32x4.default": [no, yes, yes, yes],
+            "sse2.cmplt.f32x4.default": [no, yes, no, yes],
+            "sse2.cmple.f32x4.default": [yes, yes, no, yes],
+            "sse2.cmpgt.f32x4.default": [no, no, no, no],
+            "sse2.cmpge.f32x4.default": [yes, no, no, no],
+            "sse2.cmpnlt.f32x4.default": [yes, no, yes, no],
+            "sse2.cmpnle.f32x4.default": [no, no, yes, no],
+            "sse2.cmpngt.f32x4.default": [yes, yes, yes, yes],
+            "sse2.cmpnge.f32x4.default": [no, yes, yes, yes],
+            "sse2.cmpord.f32x4.default": [yes, yes, no, yes],
+        }
+
+        for case_id, lanes in expected.items():
+            with self.subTest(case_id=case_id):
+                case = self.cases.get(case_id)
+                actual = load_development_case(case).execute(record)
+                self.assertEqual(
+                    actual, {"return": {"element": "f32", "lanes": lanes}}
+                )
+
+    def test_f32_bitwise_and_lane_models_preserve_exact_bits(self) -> None:
+        a = ["0x01234567", "0x89abcdef", "0xdeadbeef", "0x80000000"]
+        b = ["0xfedcba98", "0x76543210", "0x11111111", "0x7fffffff"]
+        record = {
+            "operands": {
+                "a": {"element": "f32", "lanes": a},
+                "b": {"element": "f32", "lanes": b},
+            }
+        }
+        expected = {
+            "sse2.or.f32x4.default": ["0xffffffff", "0xffffffff", "0xdfbdbfff", "0xffffffff"],
+            "sse2.xor.f32x4.default": ["0xffffffff", "0xffffffff", "0xcfbcaffe", "0xffffffff"],
+            "sse2.andnot.f32x4.default": ["0xfedcba98", "0x76543210", "0x01100110", "0x7fffffff"],
+            "sse2.unpackhi.f32x4.default": [a[2], b[2], a[3], b[3]],
+            "sse2.movelh.f32x4.default": [a[0], a[1], b[0], b[1]],
+            "sse2.move.f32x4.default": [b[0], a[1], a[2], a[3]],
+        }
+
+        for case_id, lanes in expected.items():
+            with self.subTest(case_id=case_id):
+                case = self.cases.get(case_id)
+                actual = load_development_case(case).execute(record)
+                self.assertEqual(
+                    actual, {"return": {"element": "f32", "lanes": lanes}}
+                )
+
+    def test_f32_scalar_models_preserve_upper_lane_bits(self) -> None:
+        a = ["0x40800000", "0x7fc00042", "0x80000000", "0xffffffff"]
+        b = ["0x40000000", "0x3f800000", "0x00000000", "0x00000001"]
+        binary = {
+            "operands": {
+                "a": {"element": "f32", "lanes": a},
+                "b": {"element": "f32", "lanes": b},
+            }
+        }
+        unary = {"operands": {"a": {"element": "f32", "lanes": a}}}
+        expected_low = {
+            "sse2.add.f32x4.scalar": "0x40c00000",
+            "sse2.sub.f32x4.scalar": "0x40000000",
+            "sse2.mul.f32x4.scalar": "0x41000000",
+            "sse2.sqrt.f32x4.scalar": "0x40000000",
+            "sse2.min.f32x4.scalar": "0x40000000",
+            "sse2.max.f32x4.scalar": "0x40800000",
+        }
+
+        for case_id, low in expected_low.items():
+            with self.subTest(case_id=case_id):
+                case = self.cases.get(case_id)
+                record = unary if ".sqrt." in case_id else binary
+                actual = load_development_case(case).execute(record)
+                self.assertEqual(
+                    actual,
+                    {"return": {"element": "f32", "lanes": [low, *a[1:]]}},
+                )
 
     def test_extended_integer_models_have_known_results(self) -> None:
         arithmetic_record = {

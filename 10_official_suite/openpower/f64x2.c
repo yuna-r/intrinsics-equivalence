@@ -9,6 +9,29 @@ typedef __vector unsigned long long u64x2;
 IOITF_BINARY(f64x2, f64x2, power_add_f64x2, vec_add(a, b))
 IOITF_BINARY(f64x2, f64x2, power_sub_f64x2, vec_sub(a, b))
 IOITF_BINARY(f64x2, f64x2, power_mul_f64x2, vec_mul(a, b))
+
+static unsigned long long sqrt_f64_bits(unsigned long long input,
+                                        unsigned long long result)
+{
+    unsigned long long magnitude = input & 0x7fffffffffffffffULL;
+    if ((input & 0x7ff0000000000000ULL) == 0x7ff0000000000000ULL &&
+        (input & 0x000fffffffffffffULL) != 0ULL) {
+        return input | 0x0008000000000000ULL;
+    }
+    if ((input & 0x8000000000000000ULL) != 0ULL && magnitude != 0ULL) {
+        return 0xfff8000000000000ULL;
+    }
+    return result;
+}
+
+f64x2 power_sqrt_f64x2(f64x2 a)
+{
+    u64x2 input = (u64x2)a;
+    u64x2 result = (u64x2)vec_sqrt(a);
+    return (f64x2)(u64x2){
+        sqrt_f64_bits(input[0], result[0]),
+        sqrt_f64_bits(input[1], result[1])};
+}
 IOITF_BINARY(f64x2, f64x2, power_and_f64x2, (f64x2)((u64x2)a & (u64x2)b))
 IOITF_BINARY(f64x2, f64x2, power_or_f64x2, (f64x2)((u64x2)a | (u64x2)b))
 IOITF_BINARY(f64x2, f64x2, power_xor_f64x2, (f64x2)((u64x2)a ^ (u64x2)b))
@@ -146,6 +169,8 @@ static int truncate_i32(double value)
 IOITF_UNARY(i32x4, f64x2, power_cvt_f64x2_i32x4, (i32x4){nearest_i32(a[0]), nearest_i32(a[1]), 0, 0})
 IOITF_UNARY(i32x4, f64x2, power_cvtt_f64x2_i32x4, (i32x4){truncate_i32(a[0]), truncate_i32(a[1]), 0, 0})
 IOITF_BINARY(f64x2, f64x2, power_add_scalar_f64x2, (f64x2){a[0] + b[0], a[1]})
+IOITF_BINARY(f64x2, f64x2, power_sub_scalar_f64x2, (f64x2){a[0] - b[0], a[1]})
+IOITF_BINARY(f64x2, f64x2, power_mul_scalar_f64x2, (f64x2){a[0] * b[0], a[1]})
 
 f64x2 power_loadu_f64x2(const void *source)
 {

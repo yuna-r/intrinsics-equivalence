@@ -7,6 +7,7 @@ typedef __m128i i32x4;
 IOITF_BINARY(f64x2, f64x2, intel_add_f64x2, _mm_add_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_sub_f64x2, _mm_sub_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_mul_f64x2, _mm_mul_pd(a, b))
+IOITF_UNARY(f64x2, f64x2, intel_sqrt_f64x2, _mm_sqrt_pd(a))
 IOITF_BINARY(f64x2, f64x2, intel_and_f64x2, _mm_and_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_or_f64x2, _mm_or_pd(a, b))
 IOITF_BINARY(f64x2, f64x2, intel_xor_f64x2, _mm_xor_pd(a, b))
@@ -76,6 +77,8 @@ IOITF_BINARY(int, f64x2, intel_comineq_f64x2, _mm_comineq_sd(a, b))
 IOITF_UNARY(i32x4, f64x2, intel_cvt_f64x2_i32x4, _mm_cvtpd_epi32(a))
 IOITF_UNARY(i32x4, f64x2, intel_cvtt_f64x2_i32x4, _mm_cvttpd_epi32(a))
 IOITF_BINARY(f64x2, f64x2, intel_add_scalar_f64x2, _mm_add_sd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_sub_scalar_f64x2, _mm_sub_sd(a, b))
+IOITF_BINARY(f64x2, f64x2, intel_mul_scalar_f64x2, _mm_mul_sd(a, b))
 
 f64x2 intel_loadu_f64x2(const void *source)
 {

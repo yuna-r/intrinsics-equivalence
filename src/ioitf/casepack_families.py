@@ -881,30 +881,51 @@ def movemask_case(case_id: str, shape: str) -> FactoryResult:
     return case_id, {"standard": 8}, candidates, execute
 
 
-def sqrt_case(case_id: str, shape: str) -> FactoryResult:
+def sqrt_case(
+    case_id: str, shape: str, *, scalar_only: bool = False
+) -> FactoryResult:
     element, width, lanes, _mask = _shape(shape)
-    if element != "f32":
-        raise ValueError("sqrt_case currently models the official f32 vector")
+    if element not in {"f32", "f64"}:
+        raise ValueError("sqrt_case requires an f32 or f64 vector")
+
+    sign = 1 << (width - 1)
+    if width == 32:
+        exponent_mask = 0x7F800000
+        fraction_mask = 0x007FFFFF
+        quiet_bit = 0x00400000
+        indefinite = 0xFFC00000
+    else:
+        exponent_mask = 0x7FF0000000000000
+        fraction_mask = 0x000FFFFFFFFFFFFF
+        quiet_bit = 0x0008000000000000
+        indefinite = 0xFFF8000000000000
+
+    standard = 10 if width == 32 else 14
 
     def candidates(case: CaseDefinition, *, seed_text: str) -> Iterator[Candidate]:
         yield from _unary_candidates(
-            case, seed_text=seed_text, element=element, lanes=lanes, standard=10
+            case, seed_text=seed_text, element=element, lanes=lanes, standard=standard
         )
 
     def sqrt_bits(bits: int) -> int:
-        magnitude = bits & 0x7FFFFFFF
-        if bits & 0x7F800000 == 0x7F800000 and bits & 0x007FFFFF:
-            return bits | 0x00400000
-        if bits & 0x80000000 and magnitude:
-            return 0xFFC00000
-        if magnitude == 0 or bits == 0x7F800000:
+        magnitude = bits & (sign - 1)
+        if bits & exponent_mask == exponent_mask and bits & fraction_mask:
+            return bits | quiet_bit
+        if bits & sign and magnitude:
+            return indefinite
+        if magnitude == 0 or bits == exponent_mask:
             return bits
         return _float_to_bits(element, math.sqrt(_float_from_bits(element, bits)))
 
     def execute(record: Candidate) -> Candidate:
-        return {"return": vector(element, tuple(sqrt_bits(int(str(bits), 16)) for bits in _lanes(record, "a")))}
+        source = _lanes(record, "a")
+        count = 1 if scalar_only else lanes
+        output = [sqrt_bits(int(str(source[index]), 16)) for index in range(count)]
+        if scalar_only:
+            output.extend(int(str(value), 16) for value in source[1:])
+        return {"return": vector(element, tuple(output))}
 
-    return case_id, {"standard": 10}, candidates, execute
+    return case_id, {"standard": standard}, candidates, execute
 
 
 def loadu_f64_case(case_id: str) -> FactoryResult:
@@ -1200,7 +1221,9 @@ def bitcast_case(case_id: str, source: str, source_lanes: int, target: str, targ
     return case_id, {"standard": len(structured)}, candidates, execute
 
 
-def minmax_float_case(case_id: str, shape: str, kind: str) -> FactoryResult:
+def minmax_float_case(
+    case_id: str, shape: str, kind: str, *, scalar_only: bool = False
+) -> FactoryResult:
     element, _width, lanes, _mask = _shape(shape)
     if not element.startswith("f") or kind not in {"min", "max"}:
         raise ValueError(f"invalid float min/max case: {shape!r} {kind!r}")
@@ -1212,7 +1235,11 @@ def minmax_float_case(case_id: str, shape: str, kind: str) -> FactoryResult:
 
     def execute(record: Candidate) -> Candidate:
         output: list[int] = []
-        for a_raw, b_raw in zip(_lanes(record, "a"), _lanes(record, "b"), strict=True):
+        left = _lanes(record, "a")
+        right = _lanes(record, "b")
+        count = 1 if scalar_only else lanes
+        for index in range(count):
+            a_raw, b_raw = left[index], right[index]
             a_bits, b_bits = int(str(a_raw), 16), int(str(b_raw), 16)
             a = _float_from_bits(element, a_bits)
             b = _float_from_bits(element, b_bits)
@@ -1222,6 +1249,8 @@ def minmax_float_case(case_id: str, shape: str, kind: str) -> FactoryResult:
                 output.append(a_bits)
             else:
                 output.append(b_bits)
+        if scalar_only:
+            output.extend(int(str(value), 16) for value in left[1:])
         return {"return": vector(element, tuple(output))}
 
     return case_id, {"standard": 10}, candidates, execute
