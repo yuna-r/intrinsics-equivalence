@@ -121,7 +121,7 @@ def _print_quality_metrics(
     ]
     if deep is not None:
         if deep.tests_run is not None:
-            rows.append(("regression tests", f"{deep.tests_run:,} passed"))
+            rows.append(("regression tests", f"{deep.tests_run:,} executed"))
         if deep.coverage_percent is not None:
             rows.append(("source line coverage", deep.coverage_percent + "%"))
         rows.append(
@@ -801,7 +801,7 @@ def _development_check(args: argparse.Namespace) -> int:
             exit_code = _compare_results(compare_args)
 
     report_label = (
-        "Build showcase report" if args.showcase_report else "Finalize artifacts"
+        "Build showcase report" if args.showcase_report and not args.quality else "Finalize artifacts"
     )
     with progress.stage(6, report_label):
         from .canonical import read_canonical_json
@@ -818,7 +818,7 @@ def _development_check(args: argparse.Namespace) -> int:
             "record_count": generated.record_count,
             "status": summary["outcome"],
         }
-        if args.showcase_report:
+        def build_showcase(quality: dict[str, JSONValue] | None = None) -> None:
             from .showcase import write_showcase_report
 
             showcase = write_showcase_report(
@@ -832,8 +832,12 @@ def _development_check(args: argparse.Namespace) -> int:
                 isa_contract_sha256=generated.used_isa_contract.sha256,
                 generated_at=started_at,
                 native_evidence=False,
+                quality=quality,
             )
             result["showcase_report"] = str(showcase)
+
+        if args.showcase_report and not args.quality:
+            build_showcase()
 
     quality_metrics = collect_quality_metrics(cases)
     quality_run: QualityRun | None = None
@@ -865,7 +869,10 @@ def _development_check(args: argparse.Namespace) -> int:
         status = "QUALITY FAILED"
     final_step = 8 if args.quality else 7
     with progress.stage(final_step, f"{status} - {generated.record_count:,} trials"):
-        pass
+        if args.showcase_report and quality_run is not None:
+            quality_summary = read_canonical_json(quality_run.report_path)
+            assert isinstance(quality_summary, dict)
+            build_showcase(quality_summary)
     if not args.quiet:
         _print_verification_metrics(metrics)
         _print_quality_metrics(quality_metrics, deep=quality_run)

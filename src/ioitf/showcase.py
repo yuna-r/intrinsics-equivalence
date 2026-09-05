@@ -7,7 +7,7 @@ from html import escape
 from pathlib import Path
 from typing import Iterable, Mapping
 
-from .canonical import JSONValue, atomic_write
+from .canonical import JSONValue, atomic_write, dumps
 from .cases import CaseDefinition
 from .metrics import collect_verification_metrics
 
@@ -68,6 +68,89 @@ def _case_cards(cases: tuple[CaseDefinition, ...], vectors_each: int) -> str:
     return "".join(cards)
 
 
+def _quality_section(quality: Mapping[str, JSONValue] | None) -> str:
+    if quality is None:
+        return '''<section class="panel oracle-report"><h2>独立したモデル検証：未実施</h2>
+          <p>このレポートの一致率は両経路の比較結果です。同じ Python モデルを使う
+          fixture 同士の一致だけでは、モデルの正しさは確認できません。
+          <code>--quality --showcase-report</code> で独立した期待値との照合結果を表示できます。</p></section>'''
+    gates = quality.get("gates", {})
+    python = gates.get("python_coverage", {}) if isinstance(gates, dict) else {}
+    classification = python.get("failure_classification", {})
+    rows = python.get("model_output_mismatches", [])
+    environment = python.get("execution_environment", {})
+    scopes = python.get("model_findings_by_contract_scope", {})
+    oracle_reference = python.get("model_oracle_reference") or {}
+    family_labels = {
+        "nan_indefinite_sign": "NaN の符号",
+        "nan_payload_priority": "NaN payload の選択",
+        "rounding_arithmetic": "丸めモード未反映：算術",
+        "rounding_sqrt": "丸めモード未反映：平方根",
+        "rounding_float_to_integer": "丸めモード未反映：浮動小数点 → 整数",
+        "rounding_narrowing": "丸めモード未反映：f64 → f32",
+        "rounding_integer_to_float": "丸めモード未反映：整数 → 浮動小数点",
+    }
+    family_rows = "".join(
+        f'<div class="matrix-row"><span>{_text(family_labels.get(name, name))}</span><b>{_text(count)}</b></div>'
+        for name, count in sorted(python.get("model_findings_by_family", {}).items())
+    )
+    findings = []
+    for row in rows:
+        record = row["input"]
+        findings.append(f'''<details><summary>{_text(record["case_id"])} — {_text(record["input_id"])}</summary>
+          <p>検証範囲：{_text(row.get("contract_scope", "未記録"))}。
+          環境指定：{_text(dumps(record.get("environment", {})))}。</p>
+          <p>入力</p><pre>{_text(dumps(record["operands"]))}</pre>
+          <p>期待値（固定 SSE2 ビット列）</p><pre>{_text(dumps(row["expected"]))}</pre>
+          <p>実測値（Python モデル）</p><pre>{_text(dumps(row["actual"]))}</pre>
+          <small>{_text(row["test_id"])}</small></details>''')
+    counts = "".join(
+        f'<div class="matrix-row"><span>{label}</span><b>{_text(classification.get(key, "未集計"))}</b></div>'
+        for key, label in (
+            ("portable_model_output_mismatches", "モデル出力と期待値の不一致（入力パターン数）"),
+            ("other_assertion_failures", "その他のテスト assertion 失敗"),
+            ("test_execution_errors", "テスト実行エラー"),
+        )
+    )
+    explanation = '''<p><strong>今回の不一致の対象は Python portable model の出力です。</strong>
+      contract 検証とモデル実行が成功した後、比較エンジン <code>ioitf.compare</code> を
+      通さず、出力のビット列を固定期待値と直接照合して検出しました。
+      比較・集計処理の誤判定として検出されたものではありません。</p>
+      <p>OpenPOWER 実機の不具合を示す結果ではありません。モデルはこのリポジトリに含まれる
+      開発用実装です。この結果だけでフレームワーク全体にバグがないとは判断しません。</p>''' if rows else '''<p>モデル出力の不一致はこの実行では記録されていません。
+      実施件数・その他の失敗・実行エラーも併せて確認してください。</p>'''
+    gate_rows = "".join(
+        f'<div class="matrix-row"><span>{_text(name)}</span><b>{_text(gate.get("status", "unknown"))}</b></div>'
+        for name, gate in gates.items() if isinstance(gate, dict)
+    )
+    return f'''<section class="panel oracle-report" id="model-oracle">
+      <div class="kicker">Independent model oracle / failure attribution</div>
+      <h2>独立したモデル検証と失敗箇所</h2>
+      {explanation}<div class="matrix">{counts}</div>
+      <h3>検証範囲と不一致の内訳</h3>
+      <p>公式 nearest-even 契約での不一致：{_text(scopes.get("official_nearest_even", "未集計"))}件。
+      丸めモードを追加した検証用契約での不一致：{_text(scopes.get("validated_rounding_extension", "未集計"))}件。</p>
+      <p>公式ケースの対応モードは変更していません。拡張契約にはSSE2の回帰期待値を登録し、
+      contract 検証を通してから実行しています。拡張した契約自体もJSONの各不一致記録に保存しています。
+      件数は不一致になった入力パターン数です。丸めの5経路は同じ原因の現れであり、別々の根本原因とは数えません。</p>
+      <div class="matrix">{family_rows}</div>
+      <p>モデル oracle テスト実施数：{_text(python.get("model_oracle_tests_run", "未集計"))} メソッド。
+      独立した出力照合：{_text(python.get("model_oracle_checks_run", "未集計"))}件。
+      実行環境：{_text(dumps(environment))}。</p>
+      <p>期待値の出典：テスト内の固定ビット列と <code>tests/data/rounding-oracles.json</code> の
+      SSE2実行結果{_text(oracle_reference.get("row_count", "未記録"))}組。
+      取得環境：{_text(oracle_reference.get("execution_context", "未記録"))}。
+      後者は4種類のMXCSR丸めモードで別プログラムから取得しています。
+      NaN の期待値の事前確認手順と Rosetta での確認記録は <code>tests/BUG_HUNT.md</code> に記載しています。
+      この quality 実行では probe を再実行していません。実機間の native evidence ではありません。</p>
+      <div class="matrix">{gate_rows}</div>
+      <details><summary>不一致の入力・期待値・実測値（{len(rows)}件）</summary>{"".join(findings)}</details>
+      <p>機械可読の根拠：<code>quality/summary.json</code> の
+      <code>gates.python_coverage</code>。入力ID、テストID、期待値、実測値、実行環境、
+      検証に使ったソースの SHA-256 を保存しています。</p>
+    </section>'''
+
+
 def render_showcase_html(
     *,
     cases: Iterable[CaseDefinition],
@@ -79,6 +162,7 @@ def render_showcase_html(
     isa_contract_sha256: str,
     generated_at: datetime,
     native_evidence: bool,
+    quality: Mapping[str, JSONValue] | None = None,
 ) -> str:
     """Render a portable report. All supplied text is escaped before insertion."""
 
@@ -119,6 +203,13 @@ def render_showcase_html(
         "mismatch": "At least one observed lane returned a divergent result.",
         "not_comparable": "One or more signals could not be compared safely.",
     }.get(outcome, "Verification sequence completed.")
+    headline_outcome = outcome
+    if quality is not None and quality.get("status") != "pass":
+        status_class = "mismatch"
+        status_title = "QUALITY CHECK FAILED"
+        headline_outcome = "quality_failed"
+        status_copy = f"Paired comparison: {outcome}. Independent quality checks failed; see failure attribution."
+    quality_section = _quality_section(quality)
     evidence_label = "NATIVE EVIDENCE" if native_evidence else "DEVELOPMENT SIMULATION"
     evidence_copy = (
         "Results were captured from architecture-specific native runners."
@@ -509,6 +600,11 @@ def render_showcase_html(
     @media (prefers-reduced-motion: reduce) {{
       *, *::before, *::after {{ animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }}
     }}
+    .oracle-report p {{ line-height: 1.8; overflow-wrap: anywhere; }}
+    .oracle-report details {{ margin-top: 18px; }}
+    .oracle-report summary {{ cursor: pointer; overflow-wrap: anywhere; }}
+    .oracle-report pre {{ white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }}
+    .oracle-report small {{ overflow-wrap: anywhere; }}
   </style>
 </head>
 <body class="{_text(status_class)}">
@@ -523,15 +619,17 @@ def render_showcase_html(
         <div class="eyebrow">Operation Nightglass</div>
         <h1>Intrinsic <span>Equivalence</span></h1>
         <p class="lede">{_text(hero_copy)}</p>
-        <div class="status-line">{_text(status_title)} // {_text(outcome).upper()}</div>
+        <div class="status-line">{_text(status_title)} // {_text(headline_outcome).upper()}</div>
       </div>
       <div class="core-wrap" aria-label="Equivalence coherence visualization">
         <div class="core">
           <div class="orbit one"></div><div class="orbit two"></div><div class="orbit three"></div>
-          <div class="core-label"><strong>{_text(rate_text)}%</strong><span>COHERENCE</span></div>
+          <div class="core-label"><strong>{_text(rate_text)}%</strong><span>PAIRED COMPARISON</span></div>
         </div>
       </div>
     </header>
+
+    {quality_section}
 
     <div class="metrics">
       <div class="metric" data-code="A-01"><strong>{case_count}</strong><span>Intrinsic cases</span></div>
@@ -690,6 +788,7 @@ def write_showcase_report(
     isa_contract_sha256: str,
     generated_at: datetime,
     native_evidence: bool,
+    quality: Mapping[str, JSONValue] | None = None,
 ) -> Path:
     """Atomically write the optional presentation-only HTML report."""
 
@@ -704,6 +803,7 @@ def write_showcase_report(
         isa_contract_sha256=isa_contract_sha256,
         generated_at=generated_at,
         native_evidence=native_evidence,
+        quality=quality,
     )
     atomic_write(path, html.encode("utf-8"))
     return path

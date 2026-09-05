@@ -25,8 +25,10 @@ from ioitf.quality import (  # noqa: E402
 from ioitf.quality_runner import (  # noqa: E402
     _coverage_totals,
     _source_counts,
+    _ProgressRunner,
     run as run_coverage,
 )
+from ioitf.oracle import ModelOutputMismatch
 
 
 class QualityTests(unittest.TestCase):
@@ -44,6 +46,37 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(metrics.development_models, 254)
         self.assertEqual(metrics.standard_boundary_floors, 254)
         self.assertEqual(metrics.architecture_bindings, 508)
+
+    def test_model_mismatches_are_distinct_from_assertions_and_execution_errors(self):
+        evidence = {"case_id": "example", "input_id": "a" * 64}
+
+        class Samples(unittest.TestCase):
+            verification_subject = "portable_model_oracle"
+
+            def test_direct(self):
+                raise ModelOutputMismatch(input_record=evidence, expected={"bits": "0xff"}, actual={"bits": "0x7f"})
+
+            def test_subtests(self):
+                with self.subTest(lane=0):
+                    raise ModelOutputMismatch(input_record=evidence, expected={"bits": "0xff"}, actual={"bits": "0x7f"})
+                with self.subTest(lane=1):
+                    self.assertEqual(1, 2)
+                with self.subTest(lane=2):
+                    raise RuntimeError("model execution failed before a result existed")
+
+        with redirect_stdout(io.StringIO()):
+            result = _ProgressRunner(stream=io.StringIO(), total=2).run(
+                unittest.defaultTestLoader.loadTestsFromTestCase(Samples)
+            )
+        self.assertEqual(result.model_oracle_tests_run, 2)
+        self.assertEqual(len(result.model_output_mismatches), 2)
+        self.assertEqual(len(result.failures), 3)
+        self.assertEqual(len(result.errors), 1)
+        for finding in result.model_output_mismatches:
+            self.assertEqual(finding["input"], evidence)
+            self.assertEqual(finding["expected"], {"bits": "0xff"})
+            self.assertEqual(finding["actual"], {"bits": "0x7f"})
+            self.assertEqual(finding["category"], "portable_model_output_mismatch")
 
     def test_coverage_totals_include_unexecuted_source_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

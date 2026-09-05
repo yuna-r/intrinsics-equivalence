@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1852" viewBox="0 0 1440 1852" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2332" viewBox="0 0 1440 2332" role="img" aria-labelledby="title description">
   <title id="title">IOITF showcase report preview</title>
-  <desc id="description">A dark science-fiction styled development-simulation report showing 254 bit-exact cases, 254,000 trials, and 100 percent coherence across Intel and OpenPOWER semantics.</desc>
+  <desc id="description">Measured arm64 development report: 254 cases and 2,032 paired fixture trials match, while 1,516 independent direct oracle checks detect 171 Python model output mismatches: 36 under official nearest-even contracts and 135 under explicitly validated rounding extensions. Other assertion failures and execution errors are zero. These findings bypass the comparator and are not OpenPOWER native evidence.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#02040a"/>
@@ -45,17 +45,17 @@
       <rect x="0.5" y="0.5" width="83" height="31" fill="currentColor" fill-opacity="0.78" stroke="#ecfbff" stroke-opacity="0.36"/>
       <rect x="6" y="7" width="72" height="3" fill="#ffffff" fill-opacity="0.34"/>
     </symbol>
-    <clipPath id="window"><rect x="40" y="40" width="1360" height="1772" rx="7"/></clipPath>
+    <clipPath id="window"><rect x="40" y="40" width="1360" height="2252" rx="7"/></clipPath>
   </defs>
 
-  <rect width="1440" height="1852" fill="#02040a"/>
+  <rect width="1440" height="2332" fill="#02040a"/>
   <g filter="url(#soft-shadow)">
-    <rect x="40" y="40" width="1360" height="1772" rx="7" fill="url(#background)" stroke="#7cf7ff" stroke-opacity="0.24"/>
+    <rect x="40" y="40" width="1360" height="2252" rx="7" fill="url(#background)" stroke="#7cf7ff" stroke-opacity="0.24"/>
   </g>
   <g clip-path="url(#window)">
-    <rect x="40" y="40" width="1360" height="1772" fill="url(#blue-glow)"/>
-    <rect x="40" y="40" width="1360" height="1772" fill="url(#violet-glow)"/>
-    <rect x="40" y="40" width="1360" height="1772" fill="url(#grid)"/>
+    <rect x="40" y="40" width="1360" height="2252" fill="url(#blue-glow)"/>
+    <rect x="40" y="40" width="1360" height="2252" fill="url(#violet-glow)"/>
+    <rect x="40" y="40" width="1360" height="2252" fill="url(#grid)"/>
 
     <rect x="40" y="40" width="1360" height="48" fill="#040810" fill-opacity="0.92"/>
     <path d="M40 88H1400" stroke="#7cf7ff" stroke-opacity="0.36"/>
@@ -63,15 +63,15 @@
     <circle cx="82" cy="64" r="4" fill="#bc7cff"/>
     <circle cx="98" cy="64" r="4" fill="#ffcb6b"/>
     <text x="122" y="69" fill="#8296aa" font-family="monospace" font-size="11" letter-spacing="2.4">IOITF // SEMANTIC EQUIVALENCE OBSERVATORY</text>
-    <text x="1368" y="69" text-anchor="end" fill="#53697d" font-family="monospace" font-size="10" letter-spacing="1.5">REPORT 77C0BA3A312E // UTC</text>
+    <text x="1368" y="69" text-anchor="end" fill="#53697d" font-family="monospace" font-size="10" letter-spacing="1.5">REPORT CBEA9B31EFA0 // 2026-09-05 UTC</text>
 
     <text x="102" y="159" fill="#7cf7ff" font-family="monospace" font-size="11" letter-spacing="4">—  OPERATION NIGHTGLASS</text>
-    <text x="100" y="246" fill="#edfaff" font-family="Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="-5">INTRINSIC</text>
-    <text x="100" y="323" fill="none" stroke="#edfaff" stroke-opacity="0.72" font-family="Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="-5">EQUIVALENCE</text>
-    <text x="102" y="369" fill="#a7bacb" font-family="Arial, sans-serif" font-size="16" letter-spacing="1">Two architecture semantics received the same deterministic signal.</text>
-    <text x="102" y="394" fill="#a7bacb" font-family="Arial, sans-serif" font-size="16" letter-spacing="1">Every paired output bit returned to the same coordinate.</text>
-    <circle cx="108" cy="439" r="5" fill="#73ffd2" filter="url(#cyan-shadow)"/>
-    <text x="126" y="444" fill="#73ffd2" font-family="monospace" font-size="12" letter-spacing="2.5">COHERENCE CONFIRMED // PASS</text>
+    <text x="100" y="246" fill="#edfaff" font-family="Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="0">INTRINSIC</text>
+    <text x="100" y="323" fill="none" stroke="#edfaff" stroke-opacity="0.72" font-family="Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="0">EQUIVALENCE</text>
+    <text x="102" y="369" fill="#a7bacb" font-family="Arial, sans-serif" font-size="16" letter-spacing="1">Paired fixtures agree. Independent checks detect NaN and rounding errors.</text>
+    <text x="102" y="394" fill="#a7bacb" font-family="Arial, sans-serif" font-size="16" letter-spacing="1">Python model output differs from fixed SSE2 reference bits.</text>
+    <circle cx="108" cy="439" r="5" fill="#ff5e7a" filter="url(#cyan-shadow)"/>
+    <text x="126" y="444" fill="#ff5e7a" font-family="monospace" font-size="12" letter-spacing="2.5">QUALITY CHECK FAILED // MODEL OUTPUT MISMATCH</text>
 
     <g transform="translate(1110 279)">
       <circle r="154" fill="none" stroke="#7cf7ff" stroke-opacity="0.38"/>
@@ -83,30 +83,56 @@
       <circle cx="-56" cy="-58" r="4" fill="#bc7cff"/>
       <g>
         <text y="-3" text-anchor="middle" fill="#edfaff" font-family="Arial, sans-serif" font-size="25" font-weight="700">100%</text>
-        <text y="15" text-anchor="middle" fill="#7cf7ff" font-family="monospace" font-size="7" letter-spacing="2">COHERENCE</text>
+        <text y="15" text-anchor="middle" fill="#7cf7ff" font-family="monospace" font-size="7" letter-spacing="1">PAIRED MATCH</text>
       </g>
     </g>
 
+    <g transform="translate(100 496)" font-family="Arial, sans-serif">
+      <rect width="1240" height="460" rx="4" fill="#170d1c" stroke="#ff5e7a" stroke-opacity="0.65"/>
+      <rect width="5" height="460" fill="#ff5e7a"/>
+      <text x="28" y="32" fill="#ff8aa0" font-family="monospace" font-size="11" letter-spacing="2">INDEPENDENT MODEL ORACLE // EXPANDED BUG HUNT</text>
+      <text x="28" y="73" fill="#edfaff" font-size="28" font-weight="700">Python model output differs from SSE2 expected bits</text>
+      <text x="28" y="117" fill="#ff5e7a" font-size="34" font-weight="700">171</text>
+      <text x="105" y="113" fill="#c8d4df" font-size="13">MODEL OUTPUT MISMATCHES</text>
+      <text x="456" y="117" fill="#73ffd2" font-size="34" font-weight="700">0</text>
+      <text x="496" y="113" fill="#c8d4df" font-size="13">OTHER ASSERTION FAILURES</text>
+      <text x="883" y="117" fill="#73ffd2" font-size="34" font-weight="700">0</text>
+      <text x="923" y="113" fill="#c8d4df" font-size="13">EXECUTION ERRORS</text>
+      <path d="M28 140H1212" stroke="#ff5e7a" stroke-opacity="0.25"/>
+      <text x="28" y="167" fill="#ffcf62" font-size="16" font-weight="700">OFFICIAL NEAREST-EVEN: 36     /     VALIDATED ROUNDING EXTENSIONS: 135 NEW</text>
+      <text x="28" y="194" fill="#edfaff" font-size="14">1,516 direct output checks bypass ioitf.compare. Official case contracts remain unchanged.</text>
+      <text x="28" y="231" fill="#ff8aa0" font-size="15">NaN sign: 12    ·    NaN payload: 24</text>
+      <text x="28" y="258" fill="#c8d4df" font-size="15">Rounding ignored: arithmetic 56    ·    sqrt 8    ·    float → integer 37</text>
+      <text x="28" y="285" fill="#c8d4df" font-size="15">Rounding ignored: f64 → f32 16    ·    integer → float 18</text>
+      <text x="28" y="315" fill="#8296aa" font-size="13">Counts are failing input patterns, not distinct bugs. Rounding failures share one cause across five paths.</text>
+      <path d="M28 330H1212" stroke="#ff5e7a" stroke-opacity="0.25"/>
+      <text x="28" y="357" fill="#a7bacb" font-size="14">Example: f32 sqrt(2), toward_positive → expected 0x3fb504f4 / model 0x3fb504f3</text>
+      <text x="28" y="384" fill="#73ffd2" font-family="monospace" font-size="12">C SANITIZERS: PASS    CROSS BUILD: PASS    REGRESSION TEST METHODS: 127 EXECUTED</text>
+      <text x="28" y="412" fill="#8296aa" font-size="13">504 SSE2 reference rows checked under Rosetta with strict FP at -O0 and -O2. No OpenPOWER hardware finding.</text>
+      <text x="28" y="439" fill="#8296aa" font-size="13">Source: expanded-model-oracle-report/quality/summary.json. These findings do not prove the whole framework bug-free.</text>
+    </g>
+
+    <g transform="translate(0 480)">
     <g transform="translate(40 496)">
       <rect width="1360" height="112" fill="#060a14" fill-opacity="0.86" stroke="#7cf7ff" stroke-opacity="0.18"/>
       <path d="M340 0V112M680 0V112M1020 0V112" stroke="#7cf7ff" stroke-opacity="0.16"/>
       <g font-family="Arial, sans-serif">
         <text x="78" y="54" fill="#edfaff" font-size="39" font-weight="700">254</text>
         <text x="78" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">INTRINSIC CASES</text>
-        <text x="418" y="54" fill="#edfaff" font-size="39" font-weight="700">254,000</text>
+        <text x="418" y="54" fill="#edfaff" font-size="39" font-weight="700">2,032</text>
         <text x="418" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">TRIALS COMPLETED</text>
-        <text x="758" y="54" fill="#edfaff" font-size="39" font-weight="700">254,000</text>
+        <text x="758" y="54" fill="#edfaff" font-size="39" font-weight="700">2,032</text>
         <text x="758" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">RESULTS ALIGNED</text>
         <text x="1098" y="54" fill="#edfaff" font-size="39" font-weight="700">0</text>
-        <text x="1098" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">DIVERGENCES</text>
+        <text x="1098" y="80" fill="#8296aa" font-family="monospace" font-size="9" letter-spacing="2.3">PAIRED DIVERGENCES</text>
       </g>
     </g>
 
-    <text x="100" y="669" fill="#ffbd4a" font-family="monospace" font-size="9" letter-spacing="3">TEST LOAD SPECTRUM // STANDARD PROFILE</text>
+    <text x="100" y="669" fill="#ffbd4a" font-family="monospace" font-size="9" letter-spacing="3">TEST LOAD SPECTRUM // SMOKE PROFILE</text>
     <text x="1340" y="665" text-anchor="end" fill="#7cf7ff" font-family="monospace" font-size="12" letter-spacing="2">DEVELOPMENT SIMULATION</text>
-    <text x="1340" y="683" text-anchor="end" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">STANDARD PROFILE // 1,000 VECTORS PER CASE</text>
-    <text x="100" y="712" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">254,000 TRIALS. EVERY CASE ALIGNED.</text>
-    <text x="102" y="742" fill="#91a7b9" font-family="Arial, sans-serif" font-size="13" letter-spacing="0.8">One thousand deterministic vectors challenged each intrinsic contract; both semantic fixtures answered every trial.</text>
+    <text x="1340" y="683" text-anchor="end" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">SMOKE PROFILE // 8 VECTORS PER CASE</text>
+    <text x="100" y="712" fill="#edfaff" font-family="Arial, sans-serif" font-size="38" font-weight="750">2,032 PAIRED FIXTURE TRIALS ALIGNED.</text>
+    <text x="102" y="742" fill="#91a7b9" font-family="Arial, sans-serif" font-size="13" letter-spacing="0.8">Eight vectors per case. Paired agreement does not establish model correctness; independent findings are shown above.</text>
 
     <g transform="translate(100 770)">
       <rect width="1240" height="760" fill="url(#load-panel)" stroke="#a7efff" stroke-opacity="0.48"/>
@@ -114,7 +140,7 @@
       <path d="M902 0V760" stroke="#d7eaff" stroke-opacity="0.32"/>
 
       <text x="26" y="35" fill="#ecfbff" font-family="monospace" font-size="10" letter-spacing="2.2">254 BIT-EXACT CASES</text>
-      <text x="850" y="35" text-anchor="end" fill="#9fffd2" font-family="monospace" font-size="9" letter-spacing="1.6">1,000 VECTORS PER CASE</text>
+      <text x="850" y="35" text-anchor="end" fill="#9fffd2" font-family="monospace" font-size="9" letter-spacing="1.6">8 VECTORS PER CASE</text>
 
       <g id="case-grid-half" transform="translate(28 55) scale(1 0.38)">
         <use href="#case-tile" color="#5eeaff" x="0" y="0" width="84" height="32"/><use href="#case-tile" color="#57e8cf" x="94" y="0" width="84" height="32"/><use href="#case-tile" color="#65ed9a" x="188" y="0" width="84" height="32"/><use href="#case-tile" color="#9eef79" x="282" y="0" width="84" height="32"/><use href="#case-tile" color="#d8ee64" x="376" y="0" width="84" height="32"/><use href="#case-tile" color="#ffd35a" x="470" y="0" width="84" height="32"/><use href="#case-tile" color="#ffb949" x="564" y="0" width="84" height="32"/><use href="#case-tile" color="#ff9a3d" x="658" y="0" width="84" height="32"/>
@@ -136,14 +162,14 @@
 
       <path d="M26 710H876" stroke="#eef8ff" stroke-opacity="0.28"/>
       <g font-family="Arial, sans-serif">
-        <text x="28" y="742" fill="#edfaff" font-size="24" font-weight="700">508,000</text>
+        <text x="28" y="742" fill="#edfaff" font-size="24" font-weight="700">4,064</text>
         <text x="28" y="758" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">FIXTURE PATH EVALUATIONS</text>
-        <text x="228" y="742" fill="#edfaff" font-size="24" font-weight="700">1,131,000</text>
+        <text x="228" y="742" fill="#edfaff" font-size="24" font-weight="700">9,048</text>
         <text x="228" y="758" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">LANE VERDICTS</text>
-        <text x="428" y="742" fill="#edfaff" font-size="24" font-weight="700">30,016,000</text>
+        <text x="428" y="742" fill="#edfaff" font-size="24" font-weight="700">240,128</text>
         <text x="428" y="758" fill="#b5cae4" font-family="monospace" font-size="8" letter-spacing="1.8">PAIRED BIT POSITIONS</text>
         <text x="680" y="742" fill="#edfaff" font-size="24" font-weight="700">0</text>
-        <text x="680" y="758" fill="#65ed9a" font-family="monospace" font-size="8" letter-spacing="1.8">DIVERGENCES</text>
+        <text x="680" y="758" fill="#65ed9a" font-family="monospace" font-size="8" letter-spacing="1.8">PAIRED DIVERGENCES</text>
       </g>
 
       <g transform="translate(930 27)">
@@ -152,21 +178,21 @@
 
         <g transform="translate(0 62)">
           <rect x="42" y="0" width="218" height="220" fill="#436ab2" fill-opacity="0.22" stroke="#d9eaff" stroke-opacity="0.42"/>
-          <rect x="56" y="0" width="170" height="220" fill="url(#load-spectrum)" fill-opacity="0.86"/>
+          <rect x="56" y="218.24" width="170" height="1.76" fill="url(#load-spectrum)" fill-opacity="0.86"/>
           <path d="M42 0H260M42 55H260M42 110H260M42 165H260M42 220H260" stroke="#edf7ff" stroke-opacity="0.42"/>
           <path d="M42 0V220H260" fill="none" stroke="#edf7ff" stroke-width="1.5" stroke-opacity="0.72"/>
-          <path d="M42 0H260" stroke="#fff4d0" stroke-width="3"/>
-          <rect x="226" y="0" width="34" height="7" fill="#ff9a3d"/>
+          <path d="M42 218.24H260" stroke="#fff4d0" stroke-width="3"/>
+          <rect x="226" y="215" width="34" height="5" fill="#ff9a3d"/>
           <g fill="#ecf7ff" font-family="monospace" font-size="9" text-anchor="end">
             <text x="34" y="4">1000</text><text x="34" y="59">750</text><text x="34" y="114">500</text><text x="34" y="169">250</text><text x="34" y="224">0</text>
           </g>
-          <text x="258" y="-9" text-anchor="end" fill="#fff0c6" font-family="monospace" font-size="8" letter-spacing="1.2">FULL LOAD</text>
+          <text x="258" y="-9" text-anchor="end" fill="#fff0c6" font-family="monospace" font-size="8" letter-spacing="1.2">ACTUAL: 8 / 1000</text>
         </g>
 
-        <text x="0" y="327" fill="#edfaff" font-family="Arial, sans-serif" font-size="27" font-weight="750">1,000 VECTORS/CASE</text>
+        <text x="0" y="327" fill="#edfaff" font-family="Arial, sans-serif" font-size="27" font-weight="750">8 VECTORS/CASE</text>
         <rect x="0" y="348" width="258" height="35" fill="#304f9d" fill-opacity="0.7" stroke="#ffcf62" stroke-opacity="0.65"/>
         <rect x="11" y="359" width="8" height="8" fill="#ffbd4a"/>
-        <text x="31" y="370" fill="#fff0c6" font-family="monospace" font-size="9" letter-spacing="1.5">STANDARD LOAD // FULL</text>
+        <text x="31" y="370" fill="#fff0c6" font-family="monospace" font-size="9" letter-spacing="1.5">SMOKE LOAD // 0.8%</text>
       </g>
     </g>
 
@@ -177,13 +203,13 @@
       <rect width="760" height="86" fill="#090e1c" fill-opacity="0.82" stroke="#7cf7ff" stroke-opacity="0.2"/>
       <rect x="26" y="20" width="255" height="48" fill="#040810" stroke="#7cf7ff" stroke-opacity="0.2"/>
       <text x="44" y="43" fill="#edfaff" font-family="Arial, sans-serif" font-size="19" font-weight="700">INTEL</text>
-      <text x="44" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">SSE2 SEMANTICS // DEV FIXTURE</text>
+      <text x="44" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">SHARED PYTHON MODEL // FIXTURE</text>
       <path d="M301 44H459" stroke="url(#beam)" stroke-width="2" filter="url(#cyan-shadow)"/>
       <circle cx="380" cy="44" r="16" fill="#08101b" stroke="#7cf7ff"/>
       <text x="380" y="49" text-anchor="middle" fill="#7cf7ff" font-family="monospace" font-size="15">≡</text>
       <rect x="479" y="20" width="255" height="48" fill="#040810" stroke="#7cf7ff" stroke-opacity="0.2"/>
       <text x="497" y="43" fill="#edfaff" font-family="Arial, sans-serif" font-size="19" font-weight="700">OPENPOWER</text>
-      <text x="497" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">VSX SEMANTICS // DEV FIXTURE</text>
+      <text x="497" y="59" fill="#8296aa" font-family="monospace" font-size="8" letter-spacing="1.5">SHARED PYTHON MODEL // FIXTURE</text>
     </g>
 
     <g transform="translate(882 1663)">
@@ -196,6 +222,7 @@
     </g>
 
     <path d="M40 1792H1400" stroke="#7cf7ff" stroke-opacity="0.2"/>
-    <text x="65" y="1788" fill="#53697d" font-family="monospace" font-size="7" letter-spacing="1.4">SELF-CONTAINED HTML // RESPONSIVE // NON-NORMATIVE SHOWCASE VIEW</text>
+    <text x="65" y="1788" fill="#53697d" font-family="monospace" font-size="7" letter-spacing="1.4">MEASURED SNAPSHOT // expanded-model-oracle-report // ARM64 DARWIN // PYTHON 3.14.7 // NOT NATIVE EVIDENCE</text>
+    </g>
   </g>
 </svg>

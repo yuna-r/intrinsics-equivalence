@@ -45,7 +45,7 @@ class ShowcaseReportTests(unittest.TestCase):
         }
         self.generated_at = datetime(2026, 9, 2, 12, 34, 56, tzinfo=timezone.utc)
 
-    def _render(self) -> str:
+    def _render(self, *, quality=None) -> str:
         return render_showcase_html(
             cases=[self.case],
             summary=self.summary,
@@ -56,6 +56,7 @@ class ShowcaseReportTests(unittest.TestCase):
             isa_contract_sha256="c" * 64,
             generated_at=self.generated_at,
             native_evidence=False,
+            quality=quality,
         )
 
     def test_report_is_self_contained_responsive_and_escapes_case_text(self) -> None:
@@ -75,6 +76,42 @@ class ShowcaseReportTests(unittest.TestCase):
         self.assertNotIn("<script>alert", html)
         self.assertNotIn("https://", html)
         self.assertNotIn("http://", html)
+
+    def test_oracle_findings_override_pass_headline_and_preserve_comparison_counts(self):
+        quality = {
+            "status": "fail",
+            "gates": {"python_coverage": {
+                "status": "fail", "model_oracle_tests_run": 1,
+                "failure_classification": {
+                    "portable_model_output_mismatches": 1,
+                    "other_assertion_failures": 0, "test_execution_errors": 0,
+                },
+                "model_output_mismatches": [{
+                    "input": {"case_id": "<script>bad</script>", "input_id": "a" * 64,
+                              "operands": {"a": "0x7ff0000000000000"}},
+                    "expected": {"bits": "0xfff8000000000000"},
+                    "actual": {"bits": "0x7ff8000000000000"},
+                    "test_id": "test_nan",
+                }],
+            }},
+        }
+        html = self._render(quality=quality)
+        self.assertIn("QUALITY CHECK FAILED // QUALITY_FAILED", html)
+        self.assertNotIn("COHERENCE CONFIRMED", html)
+        self.assertIn("Matched inputs</span><b>0008", html)
+        self.assertIn("Comparison outcome</span><b>PASS", html)
+        self.assertIn("比較・集計処理の誤判定として検出されたものではありません", html)
+        self.assertIn("0xfff8000000000000", html)
+        self.assertIn("0x7ff8000000000000", html)
+        self.assertIn("&lt;script&gt;bad&lt;/script&gt;", html)
+        self.assertNotIn("<script>bad", html)
+
+    def test_missing_quality_is_not_presented_as_an_oracle_pass(self):
+        self.assertIn("独立したモデル検証：未実施", self._render())
+        html = self._render(quality={"status": "fail", "gates": {}})
+        self.assertIn("QUALITY CHECK FAILED", html)
+        self.assertIn("未集計", html)
+        self.assertNotIn("今回の不一致の対象は", html)
 
     def test_load_spectrum_shows_derived_workload(self) -> None:
         html = self._render()

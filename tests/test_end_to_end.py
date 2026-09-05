@@ -28,6 +28,7 @@ from ioitf.cli import (  # noqa: E402
     _CheckProgress,
     _QualityGateProgress,
     _parse_jobs,
+    _print_quality_metrics,
     main,
 )
 from ioitf.compare import compare_result_records  # noqa: E402
@@ -36,7 +37,7 @@ from ioitf.generator import generate_artifact  # noqa: E402
 from ioitf.isa import load_isa_registry  # noqa: E402
 from ioitf.records import derive_input_id  # noqa: E402
 from ioitf.report import RecordReport, write_failure_bundle, write_reports  # noqa: E402
-from ioitf.quality import QualityGateUpdate, QualityRun  # noqa: E402
+from ioitf.quality import QualityGateUpdate, QualityRun, collect_quality_metrics  # noqa: E402
 
 
 class EndToEndTests(unittest.TestCase):
@@ -197,9 +198,18 @@ class EndToEndTests(unittest.TestCase):
             progress = stderr.getvalue()
             self.assertIn("[7/8] Run quality gates", progress)
             self.assertIn("[8/8] PASS - 254 trials", progress)
-            self.assertRegex(progress, r"regression tests\s+82 passed")
+            self.assertRegex(progress, r"regression tests\s+82 executed")
             self.assertRegex(progress, r"source line coverage\s+87.5%")
             self.assertRegex(progress, r"deep quality gates\s+3 / 3")
+
+            failed_output = io.StringIO()
+            _print_quality_metrics(
+                collect_quality_metrics(self.cases),
+                deep=QualityRun("fail", report, 2, 3, "87.5", 82),
+                stream=failed_output,
+            )
+            self.assertRegex(failed_output.getvalue(), r"regression tests\s+82 executed")
+            self.assertNotIn("passed", failed_output.getvalue())
 
     def test_check_quiet_keeps_stderr_empty_and_stdout_canonical(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

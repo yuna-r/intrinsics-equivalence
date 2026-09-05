@@ -7,14 +7,17 @@ pays tracing overhead.  It intentionally uses only the Python standard library.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from contextlib import redirect_stdout
 import io
 from pathlib import Path
+import platform
 import sys
 import trace
 import unittest
 
-from .canonical import JSONValue, atomic_write, dump_bytes, dumps
+from .canonical import JSONValue, atomic_write, dump_bytes, dumps, sha256_file
+from .oracle import ModelOutputMismatch
 
 
 _PROGRESS_PREFIX = "IOITF_PROGRESS "
@@ -36,9 +39,38 @@ class _ProgressResult(unittest.TextTestResult):
         super().__init__(stream, descriptions, verbosity)
         self._completed = 0
         self._total = total
+        self.model_oracle_tests_run = 0
+        self.model_oracle_checks_run = 0
+        self.model_oracle_reference: JSONValue = None
+        self.model_output_mismatches: list[JSONValue] = []
+
+    def startTest(self, test: unittest.TestCase) -> None:
+        super().startTest(test)
+        if getattr(test, "verification_subject", None) == "portable_model_oracle":
+            self.model_oracle_tests_run += 1
+            reference = getattr(test, "oracle_reference_metadata", None)
+            if reference is not None:
+                self.model_oracle_reference = reference
+
+    def _record_model_mismatch(self, test: unittest.TestCase, err: tuple) -> None:
+        if isinstance(err[1], ModelOutputMismatch):
+            self.model_output_mismatches.append({
+                **err[1].evidence, "test_id": test.id(),
+            })
+
+    def addFailure(self, test: unittest.TestCase, err: tuple) -> None:
+        self._record_model_mismatch(test, err)
+        super().addFailure(test, err)
+
+    def addSubTest(self, test: unittest.TestCase, subtest: unittest.TestCase,
+                   err: tuple | None) -> None:
+        if err is not None:
+            self._record_model_mismatch(subtest, err)
+        super().addSubTest(test, subtest, err)
 
     def stopTest(self, test: unittest.case.TestCase) -> None:
         super().stopTest(test)
+        self.model_oracle_checks_run += getattr(test, "oracle_checks", 0)
         self._completed += 1
         _emit_progress(self._completed, self._total)
 
@@ -59,7 +91,7 @@ class _ProgressRunner(unittest.TextTestRunner):
 
 def _run_tests(
     tests: Path, stream: io.StringIO
-) -> tuple[unittest.TestResult, int]:
+) -> tuple[_ProgressResult, int]:
     suite = unittest.TestLoader().discover(str(tests), pattern="test_*.py")
     total = suite.countTestCases() + 1
     _emit_progress(0, total)
@@ -152,6 +184,37 @@ def run(project_root: Path, output: Path) -> tuple[int, dict[str, JSONValue]]:
         "source_files": source_files,
         "status": "pass" if result.wasSuccessful() else "fail",
         "tests_run": result.testsRun,
+        "failure_classification": {
+            "portable_model_output_mismatches": len(result.model_output_mismatches),
+            "other_assertion_failures": len(result.failures) - len(result.model_output_mismatches),
+            "test_execution_errors": len(result.errors),
+        },
+        "model_oracle_tests_run": result.model_oracle_tests_run,
+        "model_oracle_checks_run": result.model_oracle_checks_run,
+        "model_oracle_reference": result.model_oracle_reference,
+        "model_findings_by_family": dict(Counter(
+            row["finding_family"] for row in result.model_output_mismatches
+        )),
+        "model_findings_by_contract_scope": dict(Counter(
+            row["contract_scope"] for row in result.model_output_mismatches
+        )),
+        "model_output_mismatches": result.model_output_mismatches,
+        "execution_environment": {
+            "machine": platform.machine(),
+            "system": platform.system(),
+            "python_version": platform.python_version(),
+        },
+        "evidence_sources": {
+            str(path.relative_to(project_root)): sha256_file(path)
+            for path in (
+                tests / "test_adversarial_models.py",
+                tests / "data" / "rounding-oracles.json",
+                tests / "native" / "probe_sse2_nan.c",
+                tests / "build_rounding_oracles.py",
+                source / "casepack_families.py",
+                source / "oracle.py",
+            ) if path.is_file()
+        },
     }
     atomic_write(output / "summary.json", dump_bytes(summary, newline=True))
     return (0 if result.wasSuccessful() else 1), summary

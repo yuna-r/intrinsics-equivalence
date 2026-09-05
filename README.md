@@ -115,6 +115,11 @@ ioitf check --quality
 同じ`quality/`以下へ残ります。3ゲートのどれかが失敗するとコマンドも非0で終了します。
 通常の`ioitf check`ではこれらを実行しないため、普段の速度は変わりません。
 
+`--quality --showcase-report` を併用すると、HTMLにもモデル出力と独立した期待値の差を
+表示します。その他のテスト失敗・実行エラーと区別し、入力・期待値・実測値を確認できます。
+fixture比較が一致してもquality検証が失敗した場合は、レポート冒頭に失敗を表示します。
+確認済みのNaN不一致と原因箇所は[`tests/BUG_HUNT.md`](tests/BUG_HUNT.md)に記載しています。
+
 `ioitf check`ひとつで、caseの確認、入力生成、両側の実行、答え合わせまで進みます。
 途中の記録は`.ioitf/checks/<timestamp>/`へ残ります。
 
@@ -123,9 +128,19 @@ ioitf check --quality
 ## おまけ：SFレポート
 
 ちょっと楽しいおまけとして、`--showcase-report`を付けると、いつもの成果物に
-近未来SF風のHTMLレポートが加わります。プレビューと同じ高密度runはこの1コマンドです。
+近未来SF風のHTMLレポートが加わります。プレビューはsmoke実行と独立したモデル検証の
+実測結果です。fixture比較の一致と、モデル出力の不一致171件を区別して表示しています。
+内訳は公式nearest-even契約の36件と、丸めモードを拡張した検証用契約の135件です。
 
 ![Showcase report preview](assets/showcase-report-preview.svg)
+
+プレビューと同じ検証を実行する場合：
+
+```sh
+ioitf check --quality --showcase-report
+```
+
+高密度runを実行する場合：
 
 ```sh
 ioitf check --profile standard --count-per-case 1000 --showcase-report
@@ -373,6 +388,9 @@ OpenPOWER adapterも対象になります。
 - CLIと一連の処理: `tests/test_end_to_end.py`
 - failure bundleと再実行: `tests/test_replay.py`
 - C ABIとadapter: `tests/native/test_native.c`
+
+同じfixtureモデル同士の比較では見逃すバグを探すテストと、確認済みのNaN不一致は
+[`tests/BUG_HUNT.md`](tests/BUG_HUNT.md)を参照してください。
 
 Python側は標準の`unittest`です。
 
